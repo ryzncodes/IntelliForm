@@ -43,3 +43,7 @@ next-env.d.ts
 # misc
 Instructions/
 .cursorrules
+
+# Project tracking files
+agent-log.md
+project-status.md
