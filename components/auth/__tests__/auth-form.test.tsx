@@ -2,28 +2,26 @@ import {render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {AuthForm} from '../auth-form';
 import {useAuth} from '@/lib/hooks/use-auth';
-import {useRouter} from 'next/navigation';
 
-// Mock the hooks
-jest.mock('@/lib/hooks/use-auth');
-jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(),
+// Mock the useAuth hook
+jest.mock('@/lib/hooks/use-auth', () => ({
+  useAuth: jest.fn(),
 }));
 
 describe('AuthForm', () => {
   const mockSignIn = jest.fn();
   const mockSignUp = jest.fn();
-  const mockPush = jest.fn();
 
   beforeEach(() => {
     // Reset all mocks before each test
     jest.clearAllMocks();
+
+    // Setup default mock implementation
     (useAuth as jest.Mock).mockReturnValue({
       signIn: mockSignIn,
       signUp: mockSignUp,
-    });
-    (useRouter as jest.Mock).mockReturnValue({
-      push: mockPush,
+      isLoading: false,
+      error: null,
     });
   });
 
@@ -39,21 +37,48 @@ describe('AuthForm', () => {
     });
 
     it('handles form submission', async () => {
-      const consoleSpy = jest.spyOn(console, 'log');
       const user = userEvent.setup();
       render(<AuthForm type='login' />);
 
-      await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-      await user.type(screen.getByLabelText(/password/i), 'password123');
-
+      const emailInput = screen.getByLabelText(/email/i);
+      const passwordInput = screen.getByLabelText(/password/i);
       const submitButton = screen.getByRole('button', {name: /sign in/i});
+
+      await user.type(emailInput, 'test@example.com');
+      await user.type(passwordInput, 'password123');
       await user.click(submitButton);
 
-      expect(consoleSpy).toHaveBeenCalledWith('Form submitted:', {
-        email: 'test@example.com',
-        password: 'password123',
+      expect(mockSignIn).toHaveBeenCalledWith(
+        'test@example.com',
+        'password123'
+      );
+    });
+
+    it('shows loading state', () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        signIn: mockSignIn,
+        signUp: mockSignUp,
+        isLoading: true,
+        error: null,
       });
-      consoleSpy.mockRestore();
+
+      render(<AuthForm type='login' />);
+
+      expect(screen.getByText(/signing in/i)).toBeInTheDocument();
+      expect(screen.getByRole('button')).toBeDisabled();
+    });
+
+    it('shows error message', () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        signIn: mockSignIn,
+        signUp: mockSignUp,
+        isLoading: false,
+        error: 'Invalid credentials',
+      });
+
+      render(<AuthForm type='login' />);
+
+      expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
     });
   });
 
@@ -69,21 +94,48 @@ describe('AuthForm', () => {
     });
 
     it('handles form submission', async () => {
-      const consoleSpy = jest.spyOn(console, 'log');
       const user = userEvent.setup();
       render(<AuthForm type='signup' />);
 
-      await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-      await user.type(screen.getByLabelText(/password/i), 'password123');
-
+      const emailInput = screen.getByLabelText(/email/i);
+      const passwordInput = screen.getByLabelText(/password/i);
       const submitButton = screen.getByRole('button', {name: /sign up/i});
+
+      await user.type(emailInput, 'test@example.com');
+      await user.type(passwordInput, 'password123');
       await user.click(submitButton);
 
-      expect(consoleSpy).toHaveBeenCalledWith('Form submitted:', {
-        email: 'test@example.com',
-        password: 'password123',
+      expect(mockSignUp).toHaveBeenCalledWith(
+        'test@example.com',
+        'password123'
+      );
+    });
+
+    it('shows loading state', () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        signIn: mockSignIn,
+        signUp: mockSignUp,
+        isLoading: true,
+        error: null,
       });
-      consoleSpy.mockRestore();
+
+      render(<AuthForm type='signup' />);
+
+      expect(screen.getByText(/signing up/i)).toBeInTheDocument();
+      expect(screen.getByRole('button')).toBeDisabled();
+    });
+
+    it('shows error message', () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        signIn: mockSignIn,
+        signUp: mockSignUp,
+        isLoading: false,
+        error: 'Email already exists',
+      });
+
+      render(<AuthForm type='signup' />);
+
+      expect(screen.getByText('Email already exists')).toBeInTheDocument();
     });
   });
 });
