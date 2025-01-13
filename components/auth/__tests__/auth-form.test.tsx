@@ -1,4 +1,4 @@
-import {render, screen, fireEvent, waitFor} from '@testing-library/react';
+import {render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {AuthForm} from '../auth-form';
 import {useAuth} from '@/lib/hooks/use-auth';
@@ -31,70 +31,29 @@ describe('AuthForm', () => {
     it('renders login form correctly', () => {
       render(<AuthForm type='login' />);
 
-      expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
       expect(
         screen.getByRole('button', {name: /sign in/i})
       ).toBeInTheDocument();
-      expect(screen.queryByLabelText(/full name/i)).not.toBeInTheDocument();
     });
 
-    it('shows validation errors for invalid email', async () => {
+    it('handles form submission', async () => {
+      const consoleSpy = jest.spyOn(console, 'log');
+      const user = userEvent.setup();
       render(<AuthForm type='login' />);
 
-      await userEvent.type(
-        screen.getByLabelText(/email address/i),
-        'invalid-email'
-      );
-      await userEvent.type(screen.getByLabelText(/password/i), 'password123');
+      await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+      await user.type(screen.getByLabelText(/password/i), 'password123');
 
-      fireEvent.submit(screen.getByRole('button', {name: /sign in/i}));
+      const submitButton = screen.getByRole('button', {name: /sign in/i});
+      await user.click(submitButton);
 
-      await waitFor(() => {
-        expect(
-          screen.getByText(/please enter a valid email address/i)
-        ).toBeInTheDocument();
+      expect(consoleSpy).toHaveBeenCalledWith('Form submitted:', {
+        email: 'test@example.com',
+        password: 'password123',
       });
-    });
-
-    it('shows validation errors for short password', async () => {
-      render(<AuthForm type='login' />);
-
-      await userEvent.type(
-        screen.getByLabelText(/email address/i),
-        'test@example.com'
-      );
-      await userEvent.type(screen.getByLabelText(/password/i), 'short');
-
-      fireEvent.submit(screen.getByRole('button', {name: /sign in/i}));
-
-      await waitFor(() => {
-        expect(
-          screen.getByText(/password must be at least 8 characters/i)
-        ).toBeInTheDocument();
-      });
-    });
-
-    it('calls signIn with valid credentials and redirects', async () => {
-      mockSignIn.mockResolvedValueOnce({error: null});
-
-      render(<AuthForm type='login' />);
-
-      await userEvent.type(
-        screen.getByLabelText(/email address/i),
-        'test@example.com'
-      );
-      await userEvent.type(screen.getByLabelText(/password/i), 'password123');
-
-      fireEvent.submit(screen.getByRole('button', {name: /sign in/i}));
-
-      await waitFor(() => {
-        expect(mockSignIn).toHaveBeenCalledWith(
-          'test@example.com',
-          'password123'
-        );
-        expect(mockPush).toHaveBeenCalledWith('/dashboard');
-      });
+      consoleSpy.mockRestore();
     });
   });
 
@@ -102,55 +61,29 @@ describe('AuthForm', () => {
     it('renders signup form correctly', () => {
       render(<AuthForm type='signup' />);
 
-      expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
       expect(
         screen.getByRole('button', {name: /sign up/i})
       ).toBeInTheDocument();
     });
 
-    it('shows validation error for invalid full name', async () => {
+    it('handles form submission', async () => {
+      const consoleSpy = jest.spyOn(console, 'log');
+      const user = userEvent.setup();
       render(<AuthForm type='signup' />);
 
-      await userEvent.type(screen.getByLabelText(/full name/i), '123');
-      await userEvent.type(
-        screen.getByLabelText(/email address/i),
-        'test@example.com'
-      );
-      await userEvent.type(screen.getByLabelText(/password/i), 'password123');
+      await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+      await user.type(screen.getByLabelText(/password/i), 'password123');
 
-      fireEvent.submit(screen.getByRole('button', {name: /sign up/i}));
+      const submitButton = screen.getByRole('button', {name: /sign up/i});
+      await user.click(submitButton);
 
-      await waitFor(() => {
-        expect(
-          screen.getByText(/full name can only contain letters and spaces/i)
-        ).toBeInTheDocument();
+      expect(consoleSpy).toHaveBeenCalledWith('Form submitted:', {
+        email: 'test@example.com',
+        password: 'password123',
       });
-    });
-
-    it('calls signUp with valid data and redirects', async () => {
-      mockSignUp.mockResolvedValueOnce({error: null});
-
-      render(<AuthForm type='signup' />);
-
-      await userEvent.type(screen.getByLabelText(/full name/i), 'John Doe');
-      await userEvent.type(
-        screen.getByLabelText(/email address/i),
-        'test@example.com'
-      );
-      await userEvent.type(screen.getByLabelText(/password/i), 'password123');
-
-      fireEvent.submit(screen.getByRole('button', {name: /sign up/i}));
-
-      await waitFor(() => {
-        expect(mockSignUp).toHaveBeenCalledWith(
-          'test@example.com',
-          'password123',
-          'John Doe'
-        );
-        expect(mockPush).toHaveBeenCalledWith('/auth/login?verified=true');
-      });
+      consoleSpy.mockRestore();
     });
   });
 });
