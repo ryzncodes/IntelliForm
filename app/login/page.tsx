@@ -2,7 +2,7 @@ import Link from 'next/link';
 import {AuthForm} from '@/components/auth/auth-form';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 
-export default function LoginPage({
+export default async function LoginPage({
   searchParams,
 }: {
   searchParams: {verified?: string};
@@ -13,9 +13,11 @@ export default function LoginPage({
       <div className='hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600'>
         <div className='absolute inset-0 bg-black/10' />
         <div className='relative z-10 m-auto max-w-lg px-8 text-center'>
-          <h1 className='text-5xl font-bold mb-6 text-white'>Welcome Back</h1>
+          <h1 className='text-5xl font-bold mb-6 text-white'>
+            Welcome back to intelliForm
+          </h1>
           <p className='text-xl text-white/90'>
-            Log in to continue your journey with intelliForm
+            Sign in to continue building amazing forms
           </p>
         </div>
       </div>
@@ -25,7 +27,7 @@ export default function LoginPage({
         <Card className='w-full max-w-md p-2 shadow-xl'>
           <CardHeader className='space-y-2'>
             <CardTitle className='text-3xl font-bold text-center'>
-              Sign in to intelliForm
+              Sign in to your account
             </CardTitle>
           </CardHeader>
           <CardContent className='space-y-4'>
