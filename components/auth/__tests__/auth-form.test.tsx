@@ -6,7 +6,9 @@ import {useRouter} from 'next/navigation';
 
 // Mock the hooks
 jest.mock('@/lib/hooks/use-auth');
-jest.mock('next/navigation');
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn(),
+}));
 
 describe('AuthForm', () => {
   const mockSignIn = jest.fn();

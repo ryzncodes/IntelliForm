@@ -1,11 +1,19 @@
-type ApiData = Record<string, unknown> | Array<unknown> | null
+export type ApiData = Record<string, unknown>
 
 export function successResponse(data: ApiData, message = 'Success') {
-  return Response.json({
-    success: true,
-    message,
-    data,
-  })
+  return new Response(
+    JSON.stringify({
+      success: true,
+      message,
+      data,
+    }),
+    {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  )
 }
 
 export function errorResponse(message: string, status = 400) {
@@ -14,6 +22,11 @@ export function errorResponse(message: string, status = 400) {
       success: false,
       message,
     }),
-    { status }
+    {
+      status,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
   )
 } 
