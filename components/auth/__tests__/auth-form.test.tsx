@@ -11,6 +11,7 @@ jest.mock('@/lib/hooks/use-auth', () => ({
 describe('AuthForm', () => {
   const mockSignIn = jest.fn();
   const mockSignUp = jest.fn();
+  const mockSignInWithProvider = jest.fn();
 
   beforeEach(() => {
     // Reset all mocks before each test
@@ -20,8 +21,56 @@ describe('AuthForm', () => {
     (useAuth as jest.Mock).mockReturnValue({
       signIn: mockSignIn,
       signUp: mockSignUp,
+      signInWithProvider: mockSignInWithProvider,
       isLoading: false,
       error: null,
+    });
+  });
+
+  describe('OAuth Providers', () => {
+    it('renders OAuth provider buttons', () => {
+      render(<AuthForm type='login' />);
+
+      expect(screen.getByText(/continue with google/i)).toBeInTheDocument();
+      expect(screen.getByText(/continue with github/i)).toBeInTheDocument();
+    });
+
+    it('handles Google sign in', async () => {
+      const user = userEvent.setup();
+      render(<AuthForm type='login' />);
+
+      const googleButton = screen.getByText(/continue with google/i);
+      await user.click(googleButton);
+
+      expect(mockSignInWithProvider).toHaveBeenCalledWith('google');
+    });
+
+    it('handles GitHub sign in', async () => {
+      const user = userEvent.setup();
+      render(<AuthForm type='login' />);
+
+      const githubButton = screen.getByText(/continue with github/i);
+      await user.click(githubButton);
+
+      expect(mockSignInWithProvider).toHaveBeenCalledWith('github');
+    });
+
+    it('disables OAuth buttons during loading', () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        signIn: mockSignIn,
+        signUp: mockSignUp,
+        signInWithProvider: mockSignInWithProvider,
+        isLoading: true,
+        error: null,
+      });
+
+      render(<AuthForm type='login' />);
+
+      const googleButton = screen.getByText(/continue with google/i);
+      const githubButton = screen.getByText(/continue with github/i);
+
+      expect(googleButton).toBeDisabled();
+      expect(githubButton).toBeDisabled();
     });
   });
 
@@ -58,6 +107,7 @@ describe('AuthForm', () => {
       (useAuth as jest.Mock).mockReturnValue({
         signIn: mockSignIn,
         signUp: mockSignUp,
+        signInWithProvider: mockSignInWithProvider,
         isLoading: true,
         error: null,
       });
@@ -65,13 +115,14 @@ describe('AuthForm', () => {
       render(<AuthForm type='login' />);
 
       expect(screen.getByText(/signing in/i)).toBeInTheDocument();
-      expect(screen.getByRole('button')).toBeDisabled();
+      expect(screen.getByRole('button', {name: /signing in/i})).toBeDisabled();
     });
 
     it('shows error message', () => {
       (useAuth as jest.Mock).mockReturnValue({
         signIn: mockSignIn,
         signUp: mockSignUp,
+        signInWithProvider: mockSignInWithProvider,
         isLoading: false,
         error: 'Invalid credentials',
       });
@@ -115,6 +166,7 @@ describe('AuthForm', () => {
       (useAuth as jest.Mock).mockReturnValue({
         signIn: mockSignIn,
         signUp: mockSignUp,
+        signInWithProvider: mockSignInWithProvider,
         isLoading: true,
         error: null,
       });
@@ -122,13 +174,14 @@ describe('AuthForm', () => {
       render(<AuthForm type='signup' />);
 
       expect(screen.getByText(/signing up/i)).toBeInTheDocument();
-      expect(screen.getByRole('button')).toBeDisabled();
+      expect(screen.getByRole('button', {name: /signing up/i})).toBeDisabled();
     });
 
     it('shows error message', () => {
       (useAuth as jest.Mock).mockReturnValue({
         signIn: mockSignIn,
         signUp: mockSignUp,
+        signInWithProvider: mockSignInWithProvider,
         isLoading: false,
         error: 'Email already exists',
       });
