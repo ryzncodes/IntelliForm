@@ -4,7 +4,7 @@ import {useEffect} from 'react';
 import {useForm} from '@/lib/hooks/use-form';
 import {Button} from '@/components/ui/button';
 import {Section} from './section';
-import {NewSection} from '@/lib/types/database';
+import {NewSection, UpdateForm} from '@/lib/types/database';
 
 interface FormBuilderProps {
   formId: string;
@@ -30,6 +30,8 @@ export function FormBuilder({formId}: FormBuilderProps) {
   }
 
   async function addSection() {
+    if (!currentForm) return;
+
     const newSection: NewSection = {
       title: 'New Section',
       description: '',
@@ -37,29 +39,39 @@ export function FormBuilder({formId}: FormBuilderProps) {
       form_id: formId,
     };
 
-    await updateForm(formId, {
+    const update: UpdateForm = {
       sections: [...currentForm.sections, newSection],
-    } as any);
+    };
+
+    await updateForm(formId, update);
   }
 
   async function updateSection(sectionId: string, data: Partial<NewSection>) {
+    if (!currentForm) return;
+
     const updatedSections = currentForm.sections.map((section) =>
       section.id === sectionId ? {...section, ...data} : section
     );
 
-    await updateForm(formId, {
+    const update: UpdateForm = {
       sections: updatedSections,
-    } as any);
+    };
+
+    await updateForm(formId, update);
   }
 
   async function deleteSection(sectionId: string) {
+    if (!currentForm) return;
+
     const updatedSections = currentForm.sections.filter(
       (section) => section.id !== sectionId
     );
 
-    await updateForm(formId, {
+    const update: UpdateForm = {
       sections: updatedSections,
-    } as any);
+    };
+
+    await updateForm(formId, update);
   }
 
   return (
@@ -83,7 +95,9 @@ export function FormBuilder({formId}: FormBuilderProps) {
           <Section
             key={section.id}
             section={section}
-            onUpdate={(data) => updateSection(section.id, data)}
+            onUpdate={(data: Partial<NewSection>) =>
+              updateSection(section.id, data)
+            }
             onDelete={() => deleteSection(section.id)}
           />
         ))}

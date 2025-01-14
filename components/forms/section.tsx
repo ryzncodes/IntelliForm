@@ -5,6 +5,7 @@ import {
   Section as SectionType,
   Question,
   NewQuestion,
+  UpdateSection,
 } from '@/lib/types/database';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
@@ -13,7 +14,7 @@ import {Question as QuestionComponent} from './question';
 
 interface SectionProps {
   section: SectionType & {questions: Question[]};
-  onUpdate: (data: Partial<SectionType>) => void;
+  onUpdate: (data: Partial<UpdateSection>) => void;
   onDelete: () => void;
 }
 
@@ -33,9 +34,11 @@ export function Section({section, onUpdate, onDelete}: SectionProps) {
       validation: null,
     };
 
-    onUpdate({
+    const update: UpdateSection = {
       questions: [...section.questions, newQuestion],
-    } as any); // TODO: Fix type
+    };
+
+    onUpdate(update);
   }
 
   function updateQuestion(questionId: string, data: Partial<Question>) {
@@ -43,9 +46,11 @@ export function Section({section, onUpdate, onDelete}: SectionProps) {
       question.id === questionId ? {...question, ...data} : question
     );
 
-    onUpdate({
+    const update: UpdateSection = {
       questions: updatedQuestions,
-    } as any); // TODO: Fix type
+    };
+
+    onUpdate(update);
   }
 
   function deleteQuestion(questionId: string) {
@@ -53,9 +58,11 @@ export function Section({section, onUpdate, onDelete}: SectionProps) {
       (question) => question.id !== questionId
     );
 
-    onUpdate({
+    const update: UpdateSection = {
       questions: updatedQuestions,
-    } as any); // TODO: Fix type
+    };
+
+    onUpdate(update);
   }
 
   return (
@@ -104,7 +111,9 @@ export function Section({section, onUpdate, onDelete}: SectionProps) {
           <QuestionComponent
             key={question.id}
             question={question}
-            onUpdate={(data) => updateQuestion(question.id, data)}
+            onUpdate={(data: Partial<Question>) =>
+              updateQuestion(question.id, data)
+            }
             onDelete={() => deleteQuestion(question.id)}
           />
         ))}

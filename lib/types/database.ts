@@ -6,14 +6,18 @@ export type {Json} from '@/lib/supabase/types';
 // Forms
 export type Form = Tables['forms']['Row'];
 export type NewForm = Tables['forms']['Insert'];
-export type UpdateForm = Tables['forms']['Update'];
+export type UpdateForm = Tables['forms']['Update'] & {
+  sections?: (UpdateSection | NewSection)[];
+};
 
 // Sections
 export type Section = Tables['sections']['Row'] & {
   questions?: Question[];
 };
 export type NewSection = Tables['sections']['Insert'];
-export type UpdateSection = Tables['sections']['Update'];
+export type UpdateSection = Tables['sections']['Update'] & {
+  questions?: (UpdateQuestion | NewQuestion)[];
+};
 
 // Questions
 export type Question = Tables['questions']['Row'];
