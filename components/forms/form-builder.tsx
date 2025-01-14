@@ -1,10 +1,14 @@
 'use client';
 
-import {useEffect, useCallback} from 'react';
+import {useEffect, useCallback, useState} from 'react';
 import {useForm} from '@/lib/hooks/use-form';
 import {Button} from '@/components/ui/button';
 import {Section} from './section';
-import {NewSection, Section as SectionType} from '@/lib/types/database';
+import type {
+  Section as SectionType,
+  FormWithSections,
+  LocalSection,
+} from '@/lib/types/database';
 
 interface FormBuilderProps {
   formId: string;
@@ -12,7 +16,7 @@ interface FormBuilderProps {
 
 export function FormBuilder({formId}: FormBuilderProps) {
   const {
-    currentForm,
+    currentForm: initialForm,
     isLoading,
     error,
     getForm,
@@ -22,13 +26,26 @@ export function FormBuilder({formId}: FormBuilderProps) {
     deleteSection,
   } = useForm();
 
+  // Local state for form data
+  const [localForm, setLocalForm] = useState<FormWithSections | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   const fetchForm = useCallback(async () => {
-    await getForm(formId);
+    const form = await getForm(formId);
+    if (form) {
+      setLocalForm(form);
+    }
   }, [formId, getForm]);
 
   useEffect(() => {
     fetchForm();
   }, [fetchForm]);
+
+  useEffect(() => {
+    if (initialForm) {
+      setLocalForm(initialForm);
+    }
+  }, [initialForm]);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -42,57 +59,119 @@ export function FormBuilder({formId}: FormBuilderProps) {
     );
   }
 
-  if (!currentForm) {
+  if (!localForm) {
     return <div>Form not found</div>;
   }
 
-  async function handleAddSection() {
-    if (!currentForm) return;
+  async function handleSave() {
+    if (!localForm) return;
 
-    const newSection: NewSection = {
-      title: 'New Section',
-      description: '',
-      order: currentForm.sections.length,
-      form_id: formId,
-    };
-
-    await createSection(newSection);
+    setIsSaving(true);
+    try {
+      // Save all sections
+      for (const section of localForm.sections) {
+        await updateSection(section.id, {
+          title: section.title,
+          description: section.description,
+          order: section.order,
+        });
+      }
+      await updateForm(formId, {
+        title: localForm.title,
+        description: localForm.description,
+      });
+    } finally {
+      setIsSaving(false);
+    }
   }
 
-  async function handleUpdateSection(
-    sectionId: string,
-    data: Partial<SectionType>
-  ) {
-    await updateSection(sectionId, data);
+  async function handleAddSection() {
+    if (!localForm) return;
+
+    const newSection: LocalSection = {
+      id: crypto.randomUUID(), // Temporary ID for local state
+      title: 'New Section',
+      description: '',
+      order: localForm.sections.length,
+      form_id: formId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      questions: [],
+    };
+
+    setLocalForm({
+      ...localForm,
+      sections: [...localForm.sections, newSection],
+    });
+
+    // Create in database
+    await createSection({
+      title: newSection.title,
+      description: newSection.description,
+      order: newSection.order,
+      form_id: formId,
+    });
+
+    // Refresh to get real IDs
+    await fetchForm();
+  }
+
+  function handleUpdateSection(sectionId: string, data: Partial<SectionType>) {
+    if (!localForm) return;
+
+    setLocalForm({
+      ...localForm,
+      sections: localForm.sections.map((section) =>
+        section.id === sectionId ? {...section, ...data} : section
+      ),
+    });
   }
 
   async function handleDeleteSection(sectionId: string) {
+    if (!localForm) return;
+
+    setLocalForm({
+      ...localForm,
+      sections: localForm.sections.filter(
+        (section) => section.id !== sectionId
+      ),
+    });
     await deleteSection(sectionId);
+  }
+
+  async function handlePublish() {
+    if (!localForm) return;
+
+    await handleSave();
+    await updateForm(formId, {is_published: !localForm.is_published});
+    await fetchForm();
   }
 
   return (
     <div className='space-y-8'>
       <div className='flex items-center justify-between'>
         <div>
-          <h1 className='text-2xl font-bold'>{currentForm.title}</h1>
-          <p className='text-muted-foreground'>{currentForm.description}</p>
+          <h1 className='text-2xl font-bold'>{localForm.title}</h1>
+          <p className='text-muted-foreground'>{localForm.description}</p>
         </div>
-        <Button
-          onClick={() =>
-            updateForm(formId, {is_published: !currentForm.is_published})
-          }
-        >
-          {currentForm.is_published ? 'Unpublish' : 'Publish'}
-        </Button>
+        <div className='flex gap-2'>
+          <Button variant='outline' onClick={handleSave} disabled={isSaving}>
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+          <Button onClick={handlePublish}>
+            {localForm.is_published ? 'Unpublish' : 'Publish'}
+          </Button>
+        </div>
       </div>
 
       <div className='space-y-4'>
-        {currentForm.sections.map((section: SectionType) => (
+        {localForm.sections.map((section) => (
           <Section
             key={section.id}
             section={section}
             onUpdate={handleUpdateSection.bind(null, section.id)}
             onDelete={() => handleDeleteSection(section.id)}
+            setLocalForm={setLocalForm}
           />
         ))}
 

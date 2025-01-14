@@ -9,44 +9,110 @@ import {useForm} from '@/lib/hooks/use-form';
 import type {
   Section,
   Question as QuestionType,
-  NewQuestion,
+  Form,
 } from '@/lib/types/database';
+import {Dispatch, SetStateAction} from 'react';
+
+type FormWithSections = Form & {
+  sections: (Section & {questions: QuestionType[]})[];
+};
 
 interface SectionProps {
   section: Section & {questions?: QuestionType[]};
   onUpdate: (updates: Partial<Section>) => void;
   onDelete: () => void;
+  setLocalForm: Dispatch<SetStateAction<FormWithSections | null>>;
 }
 
-export function Section({section, onUpdate, onDelete}: SectionProps) {
+export function Section({
+  section,
+  onUpdate,
+  onDelete,
+  setLocalForm,
+}: SectionProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const {createQuestion, updateQuestion, deleteQuestion} = useForm();
+  const [isAddingQuestion, setIsAddingQuestion] = useState(false);
+  const {createQuestion} = useForm();
 
   const handleAddQuestion = async () => {
-    const newQuestion: NewQuestion = {
-      section_id: section.id,
-      title: 'New Question',
-      description: '',
-      type: 'short_text',
-      required: false,
-      order: section.questions?.length || 0,
-      options: [],
-      validation: null,
-      logic: null,
-    };
+    try {
+      setIsAddingQuestion(true);
+      const newQuestion: QuestionType = {
+        id: crypto.randomUUID(), // Temporary ID for local state
+        section_id: section.id,
+        title: 'New Question',
+        description: '',
+        type: 'short_text',
+        required: false,
+        order: section.questions?.length || 0,
+        options: {},
+        validation: null,
+        logic: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
 
-    await createQuestion(newQuestion);
+      // Update local state immediately
+      setLocalForm((prev) => ({
+        ...prev!,
+        sections: prev!.sections.map((s) => {
+          if (s.id === section.id) {
+            return {
+              ...s,
+              questions: [...(s.questions || []), newQuestion],
+            };
+          }
+          return s;
+        }),
+      }));
+
+      // Create in database (will be synced when form is saved)
+      await createQuestion({
+        section_id: section.id,
+        title: newQuestion.title,
+        description: newQuestion.description,
+        type: newQuestion.type,
+        required: newQuestion.required,
+        order: newQuestion.order,
+        options: newQuestion.options,
+        validation: newQuestion.validation,
+        logic: newQuestion.logic,
+      });
+    } finally {
+      setIsAddingQuestion(false);
+    }
   };
 
-  const handleUpdateQuestion = async (
-    id: string,
-    updates: Partial<QuestionType>
-  ) => {
-    await updateQuestion(id, updates);
+  const handleUpdateQuestion = (id: string, updates: Partial<QuestionType>) => {
+    setLocalForm((prev) => ({
+      ...prev!,
+      sections: prev!.sections.map((s) => {
+        if (s.id === section.id) {
+          return {
+            ...s,
+            questions: s.questions.map((q) =>
+              q.id === id ? {...q, ...updates} : q
+            ),
+          };
+        }
+        return s;
+      }),
+    }));
   };
 
-  const handleDeleteQuestion = async (id: string) => {
-    await deleteQuestion(id);
+  const handleDeleteQuestion = (id: string) => {
+    setLocalForm((prev) => ({
+      ...prev!,
+      sections: prev!.sections.map((s) => {
+        if (s.id === section.id) {
+          return {
+            ...s,
+            questions: s.questions.filter((q) => q.id !== id),
+          };
+        }
+        return s;
+      }),
+    }));
   };
 
   return (
@@ -108,8 +174,9 @@ export function Section({section, onUpdate, onDelete}: SectionProps) {
           variant='outline'
           className='w-full'
           onClick={handleAddQuestion}
+          disabled={isAddingQuestion}
         >
-          Add Question
+          {isAddingQuestion ? 'Adding Question...' : 'Add Question'}
         </Button>
       </div>
     </div>
