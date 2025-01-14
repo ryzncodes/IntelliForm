@@ -4,7 +4,8 @@ import {useEffect, useCallback, useState} from 'react';
 import {useForm} from '@/lib/hooks/use-form';
 import {Button} from '@/components/ui/button';
 import {Section} from './section';
-import Link from 'next/link';
+import {useRouter} from 'next/navigation';
+import {UnsavedChangesModal} from '@/components/ui/unsaved-changes-modal';
 import type {
   Section as SectionType,
   FormWithSections,
@@ -16,16 +17,18 @@ interface FormBuilderProps {
 }
 
 export function FormBuilder({formId}: FormBuilderProps) {
+  const router = useRouter();
   const {
     currentForm: initialForm,
     isLoading,
     error,
     getForm,
     updateForm,
+    deleteSection,
     createSection,
     updateSection,
-    deleteSection,
     createQuestion,
+    publishForm,
   } = useForm();
 
   // Local state for form data
@@ -33,6 +36,10 @@ export function FormBuilder({formId}: FormBuilderProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<
+    'preview' | 'publish' | null
+  >(null);
 
   const fetchForm = useCallback(async () => {
     const form = await getForm(formId);
@@ -80,8 +87,9 @@ export function FormBuilder({formId}: FormBuilderProps) {
   async function handleSave() {
     if (!localForm) return;
 
-    setIsSaving(true);
     try {
+      setIsSaving(true);
+
       // Group sections by whether they're new or existing
       const newSections = localForm.sections.filter((s) =>
         s.id.startsWith('temp_')
@@ -101,7 +109,7 @@ export function FormBuilder({formId}: FormBuilderProps) {
       );
       await Promise.all(newSectionPromises);
 
-      // Get updated form once to get all new section IDs
+      // Get updated form to get new section IDs
       const updatedForm = await getForm(formId);
       if (!updatedForm) throw new Error('Failed to get updated form');
 
@@ -179,9 +187,55 @@ export function FormBuilder({formId}: FormBuilderProps) {
 
       // Refresh to get final state
       await fetchForm();
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error('Error saving form:', error);
     } finally {
       setIsSaving(false);
     }
+  }
+
+  async function handlePreview() {
+    if (hasUnsavedChanges) {
+      setPendingAction('preview');
+      setShowUnsavedModal(true);
+    } else {
+      router.push(`/forms/${formId}/preview`);
+    }
+  }
+
+  async function handlePublish() {
+    if (hasUnsavedChanges) {
+      setPendingAction('publish');
+      setShowUnsavedModal(true);
+    } else {
+      await handlePublishAction();
+    }
+  }
+
+  async function handlePublishAction() {
+    if (!localForm) return;
+
+    try {
+      setIsPublishing(true);
+      await publishForm(formId);
+      router.push('/dashboard/forms');
+    } catch (error) {
+      console.error('Error publishing form:', error);
+    } finally {
+      setIsPublishing(false);
+    }
+  }
+
+  async function handleSaveAndContinue() {
+    await handleSave();
+    if (pendingAction === 'preview') {
+      router.push(`/forms/${formId}/preview`);
+    } else if (pendingAction === 'publish') {
+      await handlePublishAction();
+    }
+    setShowUnsavedModal(false);
+    setPendingAction(null);
   }
 
   function handleAddSection() {
@@ -234,64 +288,63 @@ export function FormBuilder({formId}: FormBuilderProps) {
     }
   }
 
-  async function handlePublish() {
-    if (!localForm) return;
-
-    setIsPublishing(true);
-    try {
-      // Only save if there are unsaved changes
-      if (hasUnsavedChanges) {
-        await handleSave();
-      }
-
-      await updateForm(formId, {is_published: !localForm.is_published});
-      await fetchForm();
-    } finally {
-      setIsPublishing(false);
-    }
-  }
-
   return (
-    <div className='space-y-8'>
-      <div className='flex items-center justify-between'>
-        <div>
-          <h1 className='text-2xl font-bold'>{localForm.title}</h1>
-          <p className='text-muted-foreground'>{localForm.description}</p>
+    <>
+      <div className='space-y-8'>
+        <div className='flex items-center justify-between'>
+          <div>
+            <h1 className='text-2xl font-bold'>{localForm.title}</h1>
+            <p className='text-muted-foreground'>{localForm.description}</p>
+          </div>
+          <div className='flex gap-2'>
+            <Button
+              variant='outline'
+              onClick={handlePreview}
+              disabled={isSaving || isPublishing}
+            >
+              Preview
+            </Button>
+            <Button
+              variant='outline'
+              onClick={handleSave}
+              disabled={isSaving || isPublishing || !hasUnsavedChanges}
+            >
+              {isSaving ? 'Saving...' : 'Save'}
+            </Button>
+            <Button onClick={handlePublish} disabled={isSaving || isPublishing}>
+              {isPublishing ? 'Publishing...' : 'Publish'}
+            </Button>
+          </div>
         </div>
-        <div className='flex gap-2'>
-          <Button
-            variant='outline'
-            onClick={handleSave}
-            disabled={isSaving || !hasUnsavedChanges}
-          >
-            {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save' : 'Saved'}
-          </Button>
-          <Button variant='outline' asChild>
-            <Link href={`/forms/${formId}/preview`}>Preview</Link>
-          </Button>
-          <Button onClick={handlePublish} disabled={isPublishing}>
-            {isPublishing
-              ? 'Processing...'
-              : localForm.is_published
-              ? 'Unpublish'
-              : 'Publish'}
-          </Button>
+
+        <div className='space-y-4'>
+          {localForm.sections.map((section) => (
+            <Section
+              key={section.id}
+              section={section}
+              onUpdate={handleUpdateSection.bind(null, section.id)}
+              onDelete={() => handleDeleteSection(section.id)}
+              setLocalForm={setLocalForm}
+            />
+          ))}
+
+          <Button onClick={handleAddSection}>Add Section</Button>
         </div>
       </div>
 
-      <div className='space-y-4'>
-        {localForm.sections.map((section) => (
-          <Section
-            key={section.id}
-            section={section}
-            onUpdate={handleUpdateSection.bind(null, section.id)}
-            onDelete={() => handleDeleteSection(section.id)}
-            setLocalForm={setLocalForm}
-          />
-        ))}
-
-        <Button onClick={handleAddSection}>Add Section</Button>
-      </div>
-    </div>
+      <UnsavedChangesModal
+        isOpen={showUnsavedModal}
+        onClose={() => {
+          setShowUnsavedModal(false);
+          setPendingAction(null);
+        }}
+        onContinueEditing={() => {
+          setShowUnsavedModal(false);
+          setPendingAction(null);
+        }}
+        onSaveAndContinue={handleSaveAndContinue}
+        action={pendingAction || 'preview'}
+      />
+    </>
   );
 }
