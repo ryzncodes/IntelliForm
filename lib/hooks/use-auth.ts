@@ -48,7 +48,6 @@ export function useAuth() {
 
       if (error) throw error;
 
-      // Show success message or redirect to verification page
       router.push('/login?verified=true');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to sign up');
@@ -62,14 +61,21 @@ export function useAuth() {
       setIsLoading(true);
       setError(null);
 
-      const {error} = await supabase.auth.signInWithOAuth({
+      const {data, error} = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            next: '/dashboard',
+          },
         },
       });
 
       if (error) throw error;
+      if (!data.url) throw new Error('No OAuth URL returned');
+
+      // Redirect to the OAuth provider's login page
+      window.location.href = data.url;
     } catch (e) {
       setError(
         e instanceof Error ? e.message : `Failed to sign in with ${provider}`

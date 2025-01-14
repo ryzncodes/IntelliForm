@@ -1,6 +1,7 @@
 'use client';
 
 import {useState} from 'react';
+import {useSearchParams} from 'next/navigation';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
@@ -10,6 +11,7 @@ export function AuthForm({type}: {type: 'login' | 'signup'}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const {signIn, signUp, signInWithProvider, isLoading, error} = useAuth();
+  const searchParams = useSearchParams();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,12 +22,18 @@ export function AuthForm({type}: {type: 'login' | 'signup'}) {
     }
   };
 
+  const authError =
+    error ||
+    (searchParams.get('error') === 'auth_callback_failed'
+      ? 'Authentication failed. Please try again.'
+      : null);
+
   return (
     <div className='space-y-6'>
       <form onSubmit={handleSubmit} className='space-y-5'>
-        {error && (
+        {authError && (
           <div className='p-3 text-sm text-red-500 bg-red-50 border border-red-200 rounded-md'>
-            {error}
+            {authError}
           </div>
         )}
         <div className='space-y-2'>
