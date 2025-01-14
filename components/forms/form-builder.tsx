@@ -4,18 +4,23 @@ import {useEffect, useCallback} from 'react';
 import {useForm} from '@/lib/hooks/use-form';
 import {Button} from '@/components/ui/button';
 import {Section} from './section';
-import {
-  NewSection,
-  UpdateForm,
-  Section as SectionType,
-} from '@/lib/types/database';
+import {NewSection, Section as SectionType} from '@/lib/types/database';
 
 interface FormBuilderProps {
   formId: string;
 }
 
 export function FormBuilder({formId}: FormBuilderProps) {
-  const {currentForm, isLoading, error, getForm, updateForm} = useForm();
+  const {
+    currentForm,
+    isLoading,
+    error,
+    getForm,
+    updateForm,
+    createSection,
+    updateSection,
+    deleteSection,
+  } = useForm();
 
   const fetchForm = useCallback(async () => {
     await getForm(formId);
@@ -41,7 +46,7 @@ export function FormBuilder({formId}: FormBuilderProps) {
     return <div>Form not found</div>;
   }
 
-  async function addSection() {
+  async function handleAddSection() {
     if (!currentForm) return;
 
     const newSection: NewSection = {
@@ -51,39 +56,18 @@ export function FormBuilder({formId}: FormBuilderProps) {
       form_id: formId,
     };
 
-    const update: UpdateForm = {
-      sections: [...currentForm.sections, newSection],
-    };
-
-    await updateForm(formId, update);
+    await createSection(newSection);
   }
 
-  async function updateSection(sectionId: string, data: Partial<NewSection>) {
-    if (!currentForm) return;
-
-    const updatedSections = currentForm.sections.map((section: SectionType) =>
-      section.id === sectionId ? {...section, ...data} : section
-    );
-
-    const update: UpdateForm = {
-      sections: updatedSections,
-    };
-
-    await updateForm(formId, update);
+  async function handleUpdateSection(
+    sectionId: string,
+    data: Partial<SectionType>
+  ) {
+    await updateSection(sectionId, data);
   }
 
-  async function deleteSection(sectionId: string) {
-    if (!currentForm) return;
-
-    const updatedSections = currentForm.sections.filter(
-      (section: SectionType) => section.id !== sectionId
-    );
-
-    const update: UpdateForm = {
-      sections: updatedSections,
-    };
-
-    await updateForm(formId, update);
+  async function handleDeleteSection(sectionId: string) {
+    await deleteSection(sectionId);
   }
 
   return (
@@ -107,14 +91,12 @@ export function FormBuilder({formId}: FormBuilderProps) {
           <Section
             key={section.id}
             section={section}
-            onUpdate={(data: Partial<NewSection>) =>
-              updateSection(section.id, data)
-            }
-            onDelete={() => deleteSection(section.id)}
+            onUpdate={handleUpdateSection.bind(null, section.id)}
+            onDelete={() => handleDeleteSection(section.id)}
           />
         ))}
 
-        <Button onClick={addSection}>Add Section</Button>
+        <Button onClick={handleAddSection}>Add Section</Button>
       </div>
     </div>
   );

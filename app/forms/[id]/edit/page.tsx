@@ -6,10 +6,12 @@ interface FormBuilderPageProps {
   };
 }
 
-export default function FormBuilderPage({params}: FormBuilderPageProps) {
+export default async function FormBuilderPage({params}: FormBuilderPageProps) {
+  const {id} = await params;
+
   return (
     <div className='container py-8'>
-      <FormBuilder formId={params.id} />
+      <FormBuilder formId={id} />
     </div>
   );
 }

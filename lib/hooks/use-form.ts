@@ -9,6 +9,8 @@ import {
   UpdateForm,
   Section,
   Question,
+  NewSection,
+  NewQuestion,
 } from '@/lib/types/database';
 
 type FormWithSections = Form & {
@@ -49,15 +51,49 @@ export function useForm() {
         setIsLoading(true);
         setError(null);
 
-        const {data, error: fetchError} = await supabase
+        // First get the form
+        const {data: formData, error: formError} = await supabase
           .from('forms')
-          .select('*, sections(*, questions(*))')
+          .select('*')
           .eq('id', id)
           .single();
 
-        if (fetchError) throw fetchError;
-        setCurrentForm(data);
-        return data;
+        if (formError) throw formError;
+
+        // Then get the sections with proper ordering
+        const {data: sections, error: sectionsError} = await supabase
+          .from('sections')
+          .select('*')
+          .eq('form_id', id)
+          .order('order', {ascending: true});
+
+        if (sectionsError) throw sectionsError;
+
+        // Then get the questions for each section
+        const sectionsWithQuestions = await Promise.all(
+          (sections || []).map(async (section: Section) => {
+            const {data: questions, error: questionsError} = await supabase
+              .from('questions')
+              .select('*')
+              .eq('section_id', section.id)
+              .order('order', {ascending: true});
+
+            if (questionsError) throw questionsError;
+
+            return {
+              ...section,
+              questions: questions || [],
+            };
+          })
+        );
+
+        const fullForm = {
+          ...formData,
+          sections: sectionsWithQuestions,
+        };
+
+        setCurrentForm(fullForm);
+        return fullForm;
       } catch (e) {
         console.error('Error fetching form:', e);
         setError(e instanceof Error ? e : new Error('Failed to fetch form'));
@@ -108,7 +144,6 @@ export function useForm() {
 
         if (updateError) throw updateError;
 
-        // Refresh the form data after update
         await getForm(id);
         router.refresh();
       } catch (e) {
@@ -119,6 +154,87 @@ export function useForm() {
       }
     },
     [supabase, router, getForm]
+  );
+
+  const createSection = useCallback(
+    async (section: NewSection) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const {error: createError} = await supabase
+          .from('sections')
+          .insert(section);
+
+        if (createError) throw createError;
+
+        await getForm(section.form_id);
+      } catch (e) {
+        console.error('Error creating section:', e);
+        setError(
+          e instanceof Error ? e : new Error('Failed to create section')
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [supabase, getForm]
+  );
+
+  const updateSection = useCallback(
+    async (id: string, updates: Partial<Section>) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const {error: updateError} = await supabase
+          .from('sections')
+          .update(updates)
+          .eq('id', id);
+
+        if (updateError) throw updateError;
+
+        if (currentForm) {
+          await getForm(currentForm.id);
+        }
+      } catch (e) {
+        console.error('Error updating section:', e);
+        setError(
+          e instanceof Error ? e : new Error('Failed to update section')
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [supabase, getForm, currentForm]
+  );
+
+  const deleteSection = useCallback(
+    async (id: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const {error: deleteError} = await supabase
+          .from('sections')
+          .delete()
+          .eq('id', id);
+
+        if (deleteError) throw deleteError;
+
+        if (currentForm) {
+          await getForm(currentForm.id);
+        }
+      } catch (e) {
+        console.error('Error deleting section:', e);
+        setError(
+          e instanceof Error ? e : new Error('Failed to delete section')
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [supabase, getForm, currentForm]
   );
 
   const deleteForm = useCallback(
@@ -159,6 +275,89 @@ export function useForm() {
     [updateForm]
   );
 
+  const createQuestion = useCallback(
+    async (question: NewQuestion) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const {error: createError} = await supabase
+          .from('questions')
+          .insert(question);
+
+        if (createError) throw createError;
+
+        if (currentForm) {
+          await getForm(currentForm.id);
+        }
+      } catch (e) {
+        console.error('Error creating question:', e);
+        setError(
+          e instanceof Error ? e : new Error('Failed to create question')
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [supabase, getForm, currentForm]
+  );
+
+  const updateQuestion = useCallback(
+    async (id: string, updates: Partial<Question>) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const {error: updateError} = await supabase
+          .from('questions')
+          .update(updates)
+          .eq('id', id);
+
+        if (updateError) throw updateError;
+
+        if (currentForm) {
+          await getForm(currentForm.id);
+        }
+      } catch (e) {
+        console.error('Error updating question:', e);
+        setError(
+          e instanceof Error ? e : new Error('Failed to update question')
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [supabase, getForm, currentForm]
+  );
+
+  const deleteQuestion = useCallback(
+    async (id: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const {error: deleteError} = await supabase
+          .from('questions')
+          .delete()
+          .eq('id', id);
+
+        if (deleteError) throw deleteError;
+
+        if (currentForm) {
+          await getForm(currentForm.id);
+        }
+      } catch (e) {
+        console.error('Error deleting question:', e);
+        setError(
+          e instanceof Error ? e : new Error('Failed to delete question')
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [supabase, getForm, currentForm]
+  );
+
   return {
     forms,
     currentForm,
@@ -167,6 +366,12 @@ export function useForm() {
     deleteForm,
     publishForm,
     unpublishForm,
+    createSection,
+    updateSection,
+    deleteSection,
+    createQuestion,
+    updateQuestion,
+    deleteQuestion,
     getForms,
     getForm,
     isLoading,
