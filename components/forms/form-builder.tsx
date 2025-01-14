@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect} from 'react';
+import {useEffect, useCallback} from 'react';
 import {useForm} from '@/lib/hooks/use-form';
 import {Button} from '@/components/ui/button';
 import {Section} from './section';
@@ -17,16 +17,24 @@ interface FormBuilderProps {
 export function FormBuilder({formId}: FormBuilderProps) {
   const {currentForm, isLoading, error, getForm, updateForm} = useForm();
 
-  useEffect(() => {
-    getForm(formId);
+  const fetchForm = useCallback(async () => {
+    await getForm(formId);
   }, [formId, getForm]);
+
+  useEffect(() => {
+    fetchForm();
+  }, [fetchForm]);
 
   if (isLoading) {
     return <div>Loading...</div>;
   }
 
   if (error) {
-    return <div>Error: {error.message}</div>;
+    return (
+      <div className='rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600'>
+        Error: {error.message}
+      </div>
+    );
   }
 
   if (!currentForm) {

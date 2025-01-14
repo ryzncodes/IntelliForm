@@ -2,6 +2,7 @@
 
 import {useState} from 'react';
 import {useForm} from '@/lib/hooks/use-form';
+import {createClient} from '@/lib/supabase/client';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
@@ -26,15 +27,25 @@ export default function NewFormPage() {
     showQuestionNumbers: true,
   });
   const {createForm, isLoading, error} = useForm();
+  const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const {
+      data: {user},
+    } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('No user found');
+      return;
+    }
+
     await createForm({
       title,
       description,
       settings,
       is_published: false,
-      user_id: '', // This will be set by RLS policy
+      user_id: user.id,
     });
   };
 
