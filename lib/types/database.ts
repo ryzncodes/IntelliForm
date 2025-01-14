@@ -14,9 +14,11 @@ export type UpdateForm = Tables['forms']['Update'] & {
 export type Section = Tables['sections']['Row'] & {
   questions?: Question[];
 };
-export type NewSection = Tables['sections']['Insert'];
+export type NewSection = Tables['sections']['Insert'] & {
+  questions?: (NewQuestion | Question)[];
+};
 export type UpdateSection = Tables['sections']['Update'] & {
-  questions?: (UpdateQuestion | NewQuestion)[];
+  questions?: (UpdateQuestion | Question)[];
 };
 
 // Questions

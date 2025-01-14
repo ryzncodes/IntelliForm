@@ -1,126 +1,113 @@
 'use client';
 
 import {useState} from 'react';
-import {
-  Section as SectionType,
-  Question,
-  NewQuestion,
-  UpdateSection,
-} from '@/lib/types/database';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
-import {Question as QuestionComponent} from './question';
+import {Question} from './question';
+import {
+  NewQuestion,
+  NewSection,
+  Section as SectionType,
+} from '@/lib/types/database';
 
 interface SectionProps {
-  section: SectionType & {questions: Question[]};
-  onUpdate: (data: Partial<UpdateSection>) => void;
+  section: SectionType;
+  onUpdate: (data: Partial<NewSection>) => void;
   onDelete: () => void;
 }
 
 export function Section({section, onUpdate, onDelete}: SectionProps) {
   const [isEditing, setIsEditing] = useState(false);
 
-  function addQuestion() {
+  async function addQuestion() {
     const newQuestion: NewQuestion = {
       title: 'New Question',
       description: '',
       type: 'short_text',
       required: false,
-      order: section.questions.length,
+      order: section.questions?.length || 0,
       section_id: section.id,
-      logic: null,
-      options: null,
-      validation: null,
+      options: {},
+      logic: {},
+      validation: {},
     };
 
-    const update: UpdateSection = {
-      questions: [...section.questions, newQuestion],
-    };
-
-    onUpdate(update);
+    onUpdate({
+      questions: [...(section.questions || []), newQuestion],
+    });
   }
 
-  function updateQuestion(questionId: string, data: Partial<Question>) {
-    const updatedQuestions = section.questions.map((question) =>
-      question.id === questionId ? {...question, ...data} : question
-    );
+  async function updateQuestion(
+    questionId: string,
+    data: Partial<NewQuestion>
+  ) {
+    const updatedQuestions =
+      section.questions?.map((question) =>
+        question.id === questionId ? {...question, ...data} : question
+      ) || [];
 
-    const update: UpdateSection = {
-      questions: updatedQuestions,
-    };
-
-    onUpdate(update);
+    onUpdate({questions: updatedQuestions});
   }
 
-  function deleteQuestion(questionId: string) {
-    const updatedQuestions = section.questions.filter(
-      (question) => question.id !== questionId
-    );
+  async function deleteQuestion(questionId: string) {
+    const updatedQuestions =
+      section.questions?.filter((question) => question.id !== questionId) || [];
 
-    const update: UpdateSection = {
-      questions: updatedQuestions,
-    };
-
-    onUpdate(update);
+    onUpdate({questions: updatedQuestions});
   }
 
-  return (
-    <div className='border rounded-lg p-4 space-y-4'>
-      {isEditing ? (
+  if (isEditing) {
+    return (
+      <div className='space-y-4 rounded-lg border p-4'>
         <div className='space-y-2'>
           <Input
             value={section.title}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              onUpdate({title: e.target.value})
-            }
+            onChange={(e) => onUpdate({title: e.target.value})}
             placeholder='Section Title'
           />
           <Textarea
             value={section.description || ''}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-              onUpdate({description: e.target.value})
-            }
-            placeholder='Section Description'
+            onChange={(e) => onUpdate({description: e.target.value})}
+            placeholder='Section Description (optional)'
+            rows={2}
           />
-          <div className='flex justify-end gap-2'>
-            <Button variant='outline' onClick={() => setIsEditing(false)}>
-              Done
-            </Button>
-            <Button variant='destructive' onClick={onDelete}>
-              Delete Section
-            </Button>
-          </div>
         </div>
-      ) : (
-        <div className='flex items-center justify-between'>
-          <div>
-            <h2 className='text-xl font-semibold'>{section.title}</h2>
-            {section.description && (
-              <p className='text-muted-foreground'>{section.description}</p>
-            )}
-          </div>
-          <Button variant='outline' onClick={() => setIsEditing(true)}>
-            Edit
+        <div className='flex justify-end gap-2'>
+          <Button variant='outline' onClick={() => setIsEditing(false)}>
+            Done
+          </Button>
+          <Button variant='destructive' onClick={onDelete}>
+            Delete Section
           </Button>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      <div className='space-y-4 pl-4'>
-        {section.questions.map((question) => (
-          <QuestionComponent
+  return (
+    <div className='space-y-4 rounded-lg border p-4'>
+      <div
+        className='space-y-1 cursor-pointer'
+        onClick={() => setIsEditing(true)}
+      >
+        <h3 className='text-lg font-medium'>{section.title}</h3>
+        {section.description && (
+          <p className='text-sm text-muted-foreground'>{section.description}</p>
+        )}
+      </div>
+
+      <div className='space-y-4'>
+        {section.questions?.map((question) => (
+          <Question
             key={question.id}
             question={question}
-            onUpdate={(data: Partial<Question>) =>
-              updateQuestion(question.id, data)
-            }
+            onUpdate={(data) => updateQuestion(question.id, data)}
             onDelete={() => deleteQuestion(question.id)}
           />
         ))}
 
-        <Button variant='outline' onClick={addQuestion}>
-          Add Question
-        </Button>
+        <Button onClick={addQuestion}>Add Question</Button>
       </div>
     </div>
   );

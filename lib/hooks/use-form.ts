@@ -1,147 +1,157 @@
 'use client';
 
-import {useCallback, useState} from 'react';
 import {useRouter} from 'next/navigation';
-import {Form, NewForm, Section, Question, Json} from '@/lib/types/database';
-import * as actions from '@/lib/actions/forms';
+import {useState} from 'react';
+import {createClient} from '@/lib/supabase/client';
+import {
+  Form,
+  NewForm,
+  UpdateForm,
+  Section,
+  Question,
+} from '@/lib/types/database';
 
-interface UseFormReturn {
-  forms: Form[] | null;
-  currentForm:
-    | (Form & {sections: (Section & {questions: Question[]})[]})
-    | null;
-  isLoading: boolean;
-  error: Error | null;
-  createForm: (form: NewForm) => Promise<void>;
-  updateForm: (id: string, form: Partial<Form>) => Promise<void>;
-  deleteForm: (id: string) => Promise<void>;
-  getForm: (id: string) => Promise<void>;
-  getForms: () => Promise<void>;
-  submitFormResponse: (
-    formId: string,
-    answers: {questionId: string; value: Json}[]
-  ) => Promise<void>;
-}
+type FormWithSections = Form & {
+  sections: (Section & {questions: Question[]})[];
+};
 
-export function useForm(): UseFormReturn {
-  const router = useRouter();
+export function useForm() {
   const [forms, setForms] = useState<Form[] | null>(null);
-  const [currentForm, setCurrentForm] = useState<
-    (Form & {sections: (Section & {questions: Question[]})[]}) | null
-  >(null);
+  const [currentForm, setCurrentForm] = useState<FormWithSections | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const router = useRouter();
+  const supabase = createClient();
 
-  const getForms = useCallback(async () => {
+  const getForms = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const forms = await actions.getForms();
-      setForms(forms);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch forms'));
+
+      const {data, error: fetchError} = await supabase
+        .from('forms')
+        .select('*')
+        .order('created_at', {ascending: false});
+
+      if (fetchError) throw fetchError;
+      setForms(data);
+    } catch (e) {
+      console.error('Error fetching forms:', e);
+      setError(e instanceof Error ? e : new Error('Failed to fetch forms'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
-  const getForm = useCallback(async (id: string) => {
+  const getForm = async (id: string) => {
     try {
       setIsLoading(true);
       setError(null);
-      const form = await actions.getForm(id);
-      setCurrentForm(form);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch form'));
+
+      const {data, error: fetchError} = await supabase
+        .from('forms')
+        .select('*, sections(*, questions(*))')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+      setCurrentForm(data);
+      return data;
+    } catch (e) {
+      console.error('Error fetching form:', e);
+      setError(e instanceof Error ? e : new Error('Failed to fetch form'));
+      return null;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
-  const createForm = useCallback(
-    async (form: NewForm) => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const newForm = await actions.createForm(form);
-        router.push(`/forms/${newForm.id}`);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err : new Error('Failed to create form')
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [router]
-  );
+  const createForm = async (form: NewForm) => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-  const updateForm = useCallback(
-    async (id: string, form: Partial<Form>) => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        await actions.updateForm(id, form);
-        await getForm(id);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err : new Error('Failed to update form')
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [getForm]
-  );
+      const {data, error: createError} = await supabase
+        .from('forms')
+        .insert(form)
+        .select()
+        .single();
 
-  const deleteForm = useCallback(
-    async (id: string) => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        await actions.deleteForm(id);
-        router.push('/forms');
-      } catch (err) {
-        setError(
-          err instanceof Error ? err : new Error('Failed to delete form')
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [router]
-  );
+      if (createError) throw createError;
 
-  const submitFormResponse = useCallback(
-    async (formId: string, answers: {questionId: string; value: Json}[]) => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        await actions.submitFormResponse(formId, answers);
-        router.push(`/forms/${formId}/thank-you`);
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err
-            : new Error('Failed to submit form response')
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [router]
-  );
+      router.push(`/forms/${data.id}/edit`);
+      router.refresh();
+    } catch (e) {
+      console.error('Error creating form:', e);
+      setError(e instanceof Error ? e : new Error('Failed to create form'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateForm = async (id: string, updates: Partial<UpdateForm>) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const {error: updateError} = await supabase
+        .from('forms')
+        .update(updates)
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      // Refresh the form data after update
+      await getForm(id);
+      router.refresh();
+    } catch (e) {
+      console.error('Error updating form:', e);
+      setError(e instanceof Error ? e : new Error('Failed to update form'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteForm = async (id: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const {error: deleteError} = await supabase
+        .from('forms')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) throw deleteError;
+
+      router.refresh();
+    } catch (e) {
+      console.error('Error deleting form:', e);
+      setError(e instanceof Error ? e : new Error('Failed to delete form'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const publishForm = async (id: string) => {
+    return updateForm(id, {is_published: true});
+  };
+
+  const unpublishForm = async (id: string) => {
+    return updateForm(id, {is_published: false});
+  };
 
   return {
     forms,
     currentForm,
-    isLoading,
-    error,
     createForm,
     updateForm,
     deleteForm,
-    getForm,
+    publishForm,
+    unpublishForm,
     getForms,
-    submitFormResponse,
+    getForm,
+    isLoading,
+    error,
   };
 }

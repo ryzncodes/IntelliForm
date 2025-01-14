@@ -4,7 +4,11 @@ import {useEffect} from 'react';
 import {useForm} from '@/lib/hooks/use-form';
 import {Button} from '@/components/ui/button';
 import {Section} from './section';
-import {NewSection, UpdateForm} from '@/lib/types/database';
+import {
+  NewSection,
+  UpdateForm,
+  Section as SectionType,
+} from '@/lib/types/database';
 
 interface FormBuilderProps {
   formId: string;
@@ -49,7 +53,7 @@ export function FormBuilder({formId}: FormBuilderProps) {
   async function updateSection(sectionId: string, data: Partial<NewSection>) {
     if (!currentForm) return;
 
-    const updatedSections = currentForm.sections.map((section) =>
+    const updatedSections = currentForm.sections.map((section: SectionType) =>
       section.id === sectionId ? {...section, ...data} : section
     );
 
@@ -64,7 +68,7 @@ export function FormBuilder({formId}: FormBuilderProps) {
     if (!currentForm) return;
 
     const updatedSections = currentForm.sections.filter(
-      (section) => section.id !== sectionId
+      (section: SectionType) => section.id !== sectionId
     );
 
     const update: UpdateForm = {
@@ -91,7 +95,7 @@ export function FormBuilder({formId}: FormBuilderProps) {
       </div>
 
       <div className='space-y-4'>
-        {currentForm.sections.map((section) => (
+        {currentForm.sections.map((section: SectionType) => (
           <Section
             key={section.id}
             section={section}
