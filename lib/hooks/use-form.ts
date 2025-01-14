@@ -1,7 +1,7 @@
 'use client';
 
 import {useRouter} from 'next/navigation';
-import {useState, useCallback} from 'react';
+import {useState, useCallback, useEffect} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {
   Form,
@@ -17,7 +17,7 @@ type FormWithSections = Form & {
   sections: (Section & {questions: Question[]})[];
 };
 
-export function useForm() {
+export function useForm(id?: string) {
   const [forms, setForms] = useState<Form[] | null>(null);
   const [currentForm, setCurrentForm] = useState<FormWithSections | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -104,6 +104,12 @@ export function useForm() {
     },
     [supabase]
   );
+
+  useEffect(() => {
+    if (id) {
+      getForm(id);
+    }
+  }, [id, getForm]);
 
   const createForm = useCallback(
     async (form: NewForm) => {

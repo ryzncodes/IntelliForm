@@ -4,6 +4,7 @@ import {useEffect, useCallback, useState} from 'react';
 import {useForm} from '@/lib/hooks/use-form';
 import {Button} from '@/components/ui/button';
 import {Section} from './section';
+import Link from 'next/link';
 import type {
   Section as SectionType,
   FormWithSections,
@@ -264,6 +265,9 @@ export function FormBuilder({formId}: FormBuilderProps) {
             disabled={isSaving || !hasUnsavedChanges}
           >
             {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save' : 'Saved'}
+          </Button>
+          <Button variant='outline' asChild>
+            <Link href={`/forms/${formId}/preview`}>Preview</Link>
           </Button>
           <Button onClick={handlePublish} disabled={isPublishing}>
             {isPublishing
