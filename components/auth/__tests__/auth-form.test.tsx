@@ -27,53 +27,6 @@ describe('AuthForm', () => {
     });
   });
 
-  describe('OAuth Providers', () => {
-    it('renders OAuth provider buttons', () => {
-      render(<AuthForm type='login' />);
-
-      expect(screen.getByText(/continue with google/i)).toBeInTheDocument();
-      expect(screen.getByText(/continue with github/i)).toBeInTheDocument();
-    });
-
-    it('handles Google sign in', async () => {
-      const user = userEvent.setup();
-      render(<AuthForm type='login' />);
-
-      const googleButton = screen.getByText(/continue with google/i);
-      await user.click(googleButton);
-
-      expect(mockSignInWithProvider).toHaveBeenCalledWith('google');
-    });
-
-    it('handles GitHub sign in', async () => {
-      const user = userEvent.setup();
-      render(<AuthForm type='login' />);
-
-      const githubButton = screen.getByText(/continue with github/i);
-      await user.click(githubButton);
-
-      expect(mockSignInWithProvider).toHaveBeenCalledWith('github');
-    });
-
-    it('disables OAuth buttons during loading', () => {
-      (useAuth as jest.Mock).mockReturnValue({
-        signIn: mockSignIn,
-        signUp: mockSignUp,
-        signInWithProvider: mockSignInWithProvider,
-        isLoading: true,
-        error: null,
-      });
-
-      render(<AuthForm type='login' />);
-
-      const googleButton = screen.getByText(/continue with google/i);
-      const githubButton = screen.getByText(/continue with github/i);
-
-      expect(googleButton).toBeDisabled();
-      expect(githubButton).toBeDisabled();
-    });
-  });
-
   describe('Login Form', () => {
     it('renders login form correctly', () => {
       render(<AuthForm type='login' />);
@@ -189,6 +142,38 @@ describe('AuthForm', () => {
       render(<AuthForm type='signup' />);
 
       expect(screen.getByText('Email already exists')).toBeInTheDocument();
+    });
+  });
+
+  describe('Google OAuth', () => {
+    it('renders Google sign in button', () => {
+      render(<AuthForm type='login' />);
+      expect(screen.getByText(/continue with google/i)).toBeInTheDocument();
+    });
+
+    it('handles Google sign in', async () => {
+      const user = userEvent.setup();
+      render(<AuthForm type='login' />);
+
+      const googleButton = screen.getByText(/continue with google/i);
+      await user.click(googleButton);
+
+      expect(mockSignInWithProvider).toHaveBeenCalledWith('google');
+    });
+
+    it('disables Google button during loading', () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        signIn: mockSignIn,
+        signUp: mockSignUp,
+        signInWithProvider: mockSignInWithProvider,
+        isLoading: true,
+        error: null,
+      });
+
+      render(<AuthForm type='login' />);
+      expect(
+        screen.getByText(/continue with google/i).closest('button')
+      ).toBeDisabled();
     });
   });
 });
