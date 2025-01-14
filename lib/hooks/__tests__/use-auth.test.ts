@@ -88,7 +88,10 @@ describe('useAuth', () => {
 
   describe('signInWithProvider', () => {
     it('initiates OAuth flow with correct provider', async () => {
-      mockSupabase.auth.signInWithOAuth.mockResolvedValueOnce({error: null});
+      mockSupabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: {url: 'https://oauth-url.com'},
+        error: null,
+      });
       const {result} = renderHook(() => useAuth());
 
       await act(async () => {
@@ -99,6 +102,9 @@ describe('useAuth', () => {
         provider: 'google',
         options: {
           redirectTo: expect.stringContaining('/auth/callback'),
+          queryParams: {
+            next: '/dashboard',
+          },
         },
       });
     });
