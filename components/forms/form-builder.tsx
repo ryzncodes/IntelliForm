@@ -24,6 +24,7 @@ export function FormBuilder({formId}: FormBuilderProps) {
     createSection,
     updateSection,
     deleteSection,
+    createQuestion,
   } = useForm();
 
   // Local state for form data
@@ -68,28 +69,86 @@ export function FormBuilder({formId}: FormBuilderProps) {
 
     setIsSaving(true);
     try {
-      // Save all sections
+      // Create or update all sections and their questions
       for (const section of localForm.sections) {
-        await updateSection(section.id, {
-          title: section.title,
-          description: section.description,
-          order: section.order,
-        });
+        if (section.id.startsWith('temp_')) {
+          // This is a new section that needs to be created
+          await createSection({
+            title: section.title,
+            description: section.description,
+            order: section.order,
+            form_id: formId,
+          });
+
+          // Get the updated form to get the new section's real ID
+          const updatedForm = await getForm(formId);
+          if (!updatedForm) throw new Error('Failed to get updated form');
+
+          // Find the newly created section
+          const newSection = updatedForm.sections.find(
+            (s: LocalSection) =>
+              s.title === section.title && s.order === section.order
+          );
+          if (!newSection) throw new Error('Failed to find new section');
+
+          // Create all questions for this new section
+          for (const question of section.questions) {
+            await createQuestion({
+              section_id: newSection.id,
+              title: question.title,
+              description: question.description,
+              type: question.type,
+              required: question.required,
+              order: question.order,
+              options: question.options,
+              validation: question.validation,
+              logic: question.logic,
+            });
+          }
+        } else {
+          // This is an existing section that needs to be updated
+          await updateSection(section.id, {
+            title: section.title,
+            description: section.description,
+            order: section.order,
+          });
+
+          // Create any new questions for this existing section
+          for (const question of section.questions) {
+            if (question.id.startsWith('temp_')) {
+              await createQuestion({
+                section_id: section.id,
+                title: question.title,
+                description: question.description,
+                type: question.type,
+                required: question.required,
+                order: question.order,
+                options: question.options,
+                validation: question.validation,
+                logic: question.logic,
+              });
+            }
+          }
+        }
       }
+
       await updateForm(formId, {
         title: localForm.title,
         description: localForm.description,
       });
+
+      // Refresh to get real IDs
+      await fetchForm();
     } finally {
       setIsSaving(false);
     }
   }
 
-  async function handleAddSection() {
+  function handleAddSection() {
     if (!localForm) return;
 
     const newSection: LocalSection = {
-      id: crypto.randomUUID(), // Temporary ID for local state
+      id: `temp_${crypto.randomUUID()}`, // Temporary ID for local state
       title: 'New Section',
       description: '',
       order: localForm.sections.length,
@@ -103,17 +162,6 @@ export function FormBuilder({formId}: FormBuilderProps) {
       ...localForm,
       sections: [...localForm.sections, newSection],
     });
-
-    // Create in database
-    await createSection({
-      title: newSection.title,
-      description: newSection.description,
-      order: newSection.order,
-      form_id: formId,
-    });
-
-    // Refresh to get real IDs
-    await fetchForm();
   }
 
   function handleUpdateSection(sectionId: string, data: Partial<SectionType>) {
@@ -136,7 +184,11 @@ export function FormBuilder({formId}: FormBuilderProps) {
         (section) => section.id !== sectionId
       ),
     });
-    await deleteSection(sectionId);
+
+    // If it's not a temporary section, delete it from the database
+    if (!sectionId.startsWith('temp_')) {
+      await deleteSection(sectionId);
+    }
   }
 
   async function handlePublish() {

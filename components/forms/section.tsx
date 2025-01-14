@@ -38,7 +38,7 @@ export function Section({
     try {
       setIsAddingQuestion(true);
       const newQuestion: QuestionType = {
-        id: crypto.randomUUID(), // Temporary ID for local state
+        id: `temp_${crypto.randomUUID()}`, // Temporary ID for local state
         section_id: section.id,
         title: 'New Question',
         description: '',
@@ -66,18 +66,20 @@ export function Section({
         }),
       }));
 
-      // Create in database (will be synced when form is saved)
-      await createQuestion({
-        section_id: section.id,
-        title: newQuestion.title,
-        description: newQuestion.description,
-        type: newQuestion.type,
-        required: newQuestion.required,
-        order: newQuestion.order,
-        options: newQuestion.options,
-        validation: newQuestion.validation,
-        logic: newQuestion.logic,
-      });
+      // Only create in database if the section is not temporary
+      if (!section.id.startsWith('temp_')) {
+        await createQuestion({
+          section_id: section.id,
+          title: newQuestion.title,
+          description: newQuestion.description,
+          type: newQuestion.type,
+          required: newQuestion.required,
+          order: newQuestion.order,
+          options: newQuestion.options,
+          validation: newQuestion.validation,
+          logic: newQuestion.logic,
+        });
+      }
     } finally {
       setIsAddingQuestion(false);
     }
