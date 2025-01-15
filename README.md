@@ -5,6 +5,8 @@ A dynamic form builder and survey platform built with Next.js 14, Supabase, and 
 ## Features
 
 - 🎨 Dynamic form builder with drag-and-drop interface
+- 📝 Smart form validation and response handling
+- 🔄 Multi-step form support with progress tracking
 - 📱 Responsive design that works on all devices
 - 🔒 Secure authentication and data storage with Supabase
 - 📊 Real-time analytics and response tracking
@@ -12,13 +14,26 @@ A dynamic form builder and survey platform built with Next.js 14, Supabase, and 
 - 📋 Multiple form templates and customization options
 - 📈 Export responses in various formats
 
+## Form Response Features
+
+- ✅ Instant form validation
+- 🔄 Auto-save responses
+- 📱 Mobile-friendly response interface
+- 🎯 Custom success pages
+- 📊 Response analytics dashboard
+- 🔒 Secure response storage
+- 📤 Response export capabilities
+
 ## Tech Stack
 
-- **Frontend:** Next.js 14, TailwindCSS, TypeScript
+- **Frontend:** Next.js 14, TailwindCSS, TypeScript, Shadcn UI
 - **Backend:** Next.js API Routes, Supabase
 - **Database:** PostgreSQL (via Supabase)
 - **Authentication:** Supabase Auth
 - **Deployment:** Vercel
+- **State Management:** React Hooks
+- **Form Handling:** Custom form hooks
+- **Notifications:** Sonner toast
 
 ## Getting Started
 
@@ -33,8 +48,6 @@ cd intelliform
 
 ```bash
 npm install
-# or
-yarn install
 ```
 
 3. Set up environment variables:
@@ -49,8 +62,6 @@ Fill in your Supabase credentials in `.env.local`
 
 ```bash
 npm run dev
-# or
-yarn dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
@@ -60,8 +71,18 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ```
 intelliForm/
 ├── app/              # Next.js app directory
+│   ├── auth/        # Authentication pages
+│   ├── dashboard/   # User dashboard
+│   ├── forms/       # Form pages
+│   └── api/         # API routes
 ├── components/       # Reusable React components
+│   ├── forms/       # Form-related components
+│   ├── ui/          # UI components
+│   └── shared/      # Shared components
 ├── lib/             # Utility functions and shared logic
+│   ├── hooks/       # Custom React hooks
+│   ├── utils/       # Utility functions
+│   └── supabase/    # Supabase client and types
 ├── public/          # Static assets
 └── types/           # TypeScript type definitions
 ```
