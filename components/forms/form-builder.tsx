@@ -6,30 +6,22 @@ import {Button} from '@/components/ui/button';
 import {Section} from './section';
 import {useRouter} from 'next/navigation';
 import {UnsavedChangesModal} from '@/components/ui/unsaved-changes-modal';
-import type {
-  Section as SectionType,
-  FormWithSections,
-  LocalSection,
-} from '@/lib/types/database';
+import type {Section as SectionType, FormWithSections, LocalSection} from '@/lib/types/database';
+import {useHotkeys} from 'react-hotkeys-hook';
 
 interface FormBuilderProps {
   formId: string;
 }
 
+type HistoryState = {
+  localForm: FormWithSections;
+  deletedSectionIds: string[];
+  deletedQuestionIds: string[];
+};
+
 export function FormBuilder({formId}: FormBuilderProps) {
   const router = useRouter();
-  const {
-    currentForm: initialForm,
-    isLoading,
-    error,
-    getForm,
-    updateForm,
-    deleteSection,
-    createSection,
-    updateSection,
-    createQuestion,
-    publishForm,
-  } = useForm();
+  const {currentForm: initialForm, isLoading, error, getForm, updateForm, createSection, updateSection, createQuestion, publishForm, deleteSection, deleteQuestion} = useForm();
 
   // Local state for form data
   const [localForm, setLocalForm] = useState<FormWithSections | null>(null);
@@ -37,9 +29,115 @@ export function FormBuilder({formId}: FormBuilderProps) {
   const [isPublishing, setIsPublishing] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
-  const [pendingAction, setPendingAction] = useState<
-    'preview' | 'publish' | null
-  >(null);
+  const [pendingAction, setPendingAction] = useState<'preview' | 'publish' | null>(null);
+  const [deletedSectionIds, setDeletedSectionIds] = useState<string[]>([]);
+  const [deletedQuestionIds, setDeletedQuestionIds] = useState<string[]>([]);
+
+  // History state
+  const [history, setHistory] = useState<HistoryState[]>([]);
+  const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
+
+  // Initialize history when form loads
+  useEffect(() => {
+    if (initialForm && localForm) {
+      // Only initialize if we haven't yet
+      if (history.length === 0) {
+        const initialState: HistoryState = {
+          localForm,
+          deletedSectionIds: [],
+          deletedQuestionIds: [],
+        };
+        setHistory([initialState]);
+        setCurrentHistoryIndex(0);
+      }
+    }
+  }, [initialForm, localForm, history.length]);
+
+  // Add state to history
+  const addToHistory = useCallback(
+    (form: FormWithSections) => {
+      const newState: HistoryState = {
+        localForm: form,
+        deletedSectionIds,
+        deletedQuestionIds,
+      };
+
+      // Remove any future history if we're not at the end
+      const newHistory = history.slice(0, currentHistoryIndex + 1);
+      setHistory([...newHistory, newState]);
+      setCurrentHistoryIndex(newHistory.length);
+    },
+    [currentHistoryIndex, history, deletedSectionIds, deletedQuestionIds]
+  );
+
+  // Update local form with history tracking
+  const updateLocalForm = useCallback(
+    (form: FormWithSections) => {
+      setLocalForm(form);
+      addToHistory(form);
+      setHasUnsavedChanges(true);
+    },
+    [addToHistory]
+  );
+
+  const canUndo = currentHistoryIndex > 0;
+  const canRedo = currentHistoryIndex < history.length - 1;
+
+  const handleUndo = useCallback(() => {
+    if (!canUndo) return;
+
+    const previousState = history[currentHistoryIndex - 1];
+    setLocalForm(previousState.localForm);
+    setDeletedSectionIds(previousState.deletedSectionIds);
+    setDeletedQuestionIds(previousState.deletedQuestionIds);
+    setCurrentHistoryIndex(currentHistoryIndex - 1);
+    setHasUnsavedChanges(true);
+  }, [canUndo, history, currentHistoryIndex]);
+
+  const handleRedo = useCallback(() => {
+    if (!canRedo) return;
+
+    const nextState = history[currentHistoryIndex + 1];
+    setLocalForm(nextState.localForm);
+    setDeletedSectionIds(nextState.deletedSectionIds);
+    setDeletedQuestionIds(nextState.deletedQuestionIds);
+    setCurrentHistoryIndex(currentHistoryIndex + 1);
+    setHasUnsavedChanges(true);
+  }, [canRedo, history, currentHistoryIndex]);
+
+  // Keyboard shortcuts
+  useHotkeys(
+    'mod+z',
+    (e: KeyboardEvent) => {
+      e.preventDefault();
+      handleUndo();
+    },
+    {
+      enabled: canUndo,
+      enableOnFormTags: false,
+      preventDefault: true,
+    }
+  );
+
+  useHotkeys(
+    'mod+shift+z',
+    (e: KeyboardEvent) => {
+      e.preventDefault();
+      handleRedo();
+    },
+    {
+      enabled: canRedo,
+      enableOnFormTags: false,
+      preventDefault: true,
+    }
+  );
+
+  // Remove the useEffect that sets localForm from initialForm since we handle it in history initialization
+  useEffect(() => {
+    if (initialForm) {
+      setLocalForm(initialForm);
+    }
+  }, [initialForm]);
 
   const fetchForm = useCallback(async () => {
     const form = await getForm(formId);
@@ -53,17 +151,10 @@ export function FormBuilder({formId}: FormBuilderProps) {
     fetchForm();
   }, [fetchForm]);
 
-  useEffect(() => {
-    if (initialForm) {
-      setLocalForm(initialForm);
-    }
-  }, [initialForm]);
-
   // Update hasUnsavedChanges when localForm changes
   useEffect(() => {
     if (initialForm && localForm) {
-      const hasChanges =
-        JSON.stringify(initialForm) !== JSON.stringify(localForm);
+      const hasChanges = JSON.stringify(initialForm) !== JSON.stringify(localForm);
       setHasUnsavedChanges(hasChanges);
     }
   }, [initialForm, localForm]);
@@ -73,11 +164,7 @@ export function FormBuilder({formId}: FormBuilderProps) {
   }
 
   if (error) {
-    return (
-      <div className='rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600'>
-        Error: {error.message}
-      </div>
-    );
+    return <div className='rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600'>Error: {error.message}</div>;
   }
 
   if (!localForm) {
@@ -90,13 +177,16 @@ export function FormBuilder({formId}: FormBuilderProps) {
     try {
       setIsSaving(true);
 
+      // Delete removed sections and questions that weren't temporary
+      const deletePromises = [
+        ...deletedSectionIds.filter((id) => !id.startsWith('temp_')).map((id) => deleteSection(id)),
+        ...deletedQuestionIds.filter((id) => !id.startsWith('temp_')).map((id) => deleteQuestion(id)),
+      ];
+      await Promise.all(deletePromises);
+
       // Group sections by whether they're new or existing
-      const newSections = localForm.sections.filter((s) =>
-        s.id.startsWith('temp_')
-      );
-      const existingSections = localForm.sections.filter(
-        (s) => !s.id.startsWith('temp_')
-      );
+      const newSections = localForm.sections.filter((s) => s.id.startsWith('temp_'));
+      const existingSections = localForm.sections.filter((s) => !s.id.startsWith('temp_'));
 
       // Create all new sections in parallel
       const newSectionPromises = newSections.map((section) =>
@@ -116,10 +206,7 @@ export function FormBuilder({formId}: FormBuilderProps) {
       // Map temporary IDs to real IDs for new sections
       const tempToRealIds = new Map();
       newSections.forEach((tempSection) => {
-        const realSection = updatedForm.sections.find(
-          (s: SectionType) =>
-            s.title === tempSection.title && s.order === tempSection.order
-        );
+        const realSection = updatedForm.sections.find((s: SectionType) => s.title === tempSection.title && s.order === tempSection.order);
         if (realSection) {
           tempToRealIds.set(tempSection.id, realSection.id);
         }
@@ -155,23 +242,22 @@ export function FormBuilder({formId}: FormBuilderProps) {
       );
 
       // Create new questions for existing sections in parallel
-      const newQuestionsForExistingSectionsPromises = existingSections.flatMap(
-        (section) =>
-          section.questions
-            .filter((q) => q.id.startsWith('temp_'))
-            .map((question) =>
-              createQuestion({
-                section_id: section.id,
-                title: question.title,
-                description: question.description,
-                type: question.type,
-                required: question.required,
-                order: question.order,
-                options: question.options,
-                validation: question.validation,
-                logic: question.logic,
-              })
-            )
+      const newQuestionsForExistingSectionsPromises = existingSections.flatMap((section) =>
+        section.questions
+          .filter((q) => q.id.startsWith('temp_'))
+          .map((question) =>
+            createQuestion({
+              section_id: section.id,
+              title: question.title,
+              description: question.description,
+              type: question.type,
+              required: question.required,
+              order: question.order,
+              options: question.options,
+              validation: question.validation,
+              logic: question.logic,
+            })
+          )
       );
 
       // Execute all remaining operations in parallel
@@ -184,6 +270,10 @@ export function FormBuilder({formId}: FormBuilderProps) {
           description: localForm.description,
         }),
       ]);
+
+      // Clear deleted items after successful save
+      setDeletedSectionIds([]);
+      setDeletedQuestionIds([]);
 
       // Refresh to get final state
       await fetchForm();
@@ -252,51 +342,81 @@ export function FormBuilder({formId}: FormBuilderProps) {
       questions: [],
     };
 
-    setLocalForm({
+    updateLocalForm({
       ...localForm,
       sections: [...localForm.sections, newSection],
     });
-    setHasUnsavedChanges(true);
   }
 
   function handleUpdateSection(sectionId: string, data: Partial<SectionType>) {
     if (!localForm) return;
 
-    setLocalForm({
+    updateLocalForm({
       ...localForm,
-      sections: localForm.sections.map((section) =>
-        section.id === sectionId ? {...section, ...data} : section
-      ),
+      sections: localForm.sections.map((section) => (section.id === sectionId ? {...section, ...data} : section)),
     });
-    setHasUnsavedChanges(true);
   }
 
   async function handleDeleteSection(sectionId: string) {
     if (!localForm) return;
 
-    setLocalForm({
-      ...localForm,
-      sections: localForm.sections.filter(
-        (section) => section.id !== sectionId
-      ),
-    });
-    setHasUnsavedChanges(true);
-
-    // If it's not a temporary section, delete it from the database
+    // Add to deleted sections list if it's not a temporary section
     if (!sectionId.startsWith('temp_')) {
-      await deleteSection(sectionId);
+      setDeletedSectionIds((prev) => [...prev, sectionId]);
     }
+
+    updateLocalForm({
+      ...localForm,
+      sections: localForm.sections.filter((section) => section.id !== sectionId),
+    });
   }
+
+  const handleDeleteQuestion = async (sectionId: string, questionId: string) => {
+    if (!localForm) return;
+
+    if (!questionId.startsWith('temp_')) {
+      setDeletedQuestionIds((prev) => [...prev, questionId]);
+    }
+
+    const updatedForm = {
+      ...localForm,
+      sections: localForm.sections.map((section) =>
+        section.id === sectionId
+          ? {
+              ...section,
+              questions: section.questions.filter((q) => q.id !== questionId),
+            }
+          : section
+      ),
+    };
+
+    setLocalForm(updatedForm);
+    updateLocalForm(updatedForm);
+  };
 
   return (
     <>
       <div className='space-y-8'>
         <div className='flex items-center justify-between'>
           <div>
-            <h1 className='text-2xl font-bold'>{localForm.title}</h1>
-            <p className='text-muted-foreground'>{localForm.description}</p>
+            <h1 className='text-2xl font-bold'>{localForm?.title}</h1>
+            <p className='text-muted-foreground'>{localForm?.description}</p>
           </div>
           <div className='flex gap-2'>
+            <Button
+              variant='outline'
+              onClick={handleUndo}
+              disabled={!canUndo || isSaving || isPublishing}
+            >
+              Undo
+            </Button>
+            <Button
+              variant='outline'
+              onClick={handleRedo}
+              disabled={!canRedo || isSaving || isPublishing}
+            >
+              Redo
+            </Button>
             <Button
               variant='outline'
               onClick={handlePreview}
@@ -311,7 +431,10 @@ export function FormBuilder({formId}: FormBuilderProps) {
             >
               {isSaving ? 'Saving...' : 'Save'}
             </Button>
-            <Button onClick={handlePublish} disabled={isSaving || isPublishing}>
+            <Button
+              onClick={handlePublish}
+              disabled={isSaving || isPublishing}
+            >
               {isPublishing ? 'Publishing...' : 'Publish'}
             </Button>
           </div>
@@ -322,9 +445,9 @@ export function FormBuilder({formId}: FormBuilderProps) {
             <Section
               key={section.id}
               section={section}
-              onUpdate={handleUpdateSection.bind(null, section.id)}
+              onUpdate={(data) => handleUpdateSection(section.id, data)}
               onDelete={() => handleDeleteSection(section.id)}
-              setLocalForm={setLocalForm}
+              onDeleteQuestion={(questionId) => handleDeleteQuestion(section.id, questionId)}
             />
           ))}
 
