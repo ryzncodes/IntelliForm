@@ -4,21 +4,10 @@ import {useEffect} from 'react';
 import Link from 'next/link';
 import {useForm} from '@/lib/hooks/use-form';
 import {Button} from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {MoreVertical, FileEdit, Trash2, BarChart} from 'lucide-react';
+import {Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle} from '@/components/ui/card';
+import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from '@/components/ui/dropdown-menu';
+import {MoreVertical, FileEdit, Trash2, BarChart, Copy} from 'lucide-react';
+import {toast} from 'sonner';
 
 export function FormsList() {
   const {forms, isLoading, error, getForms, deleteForm} = useForm();
@@ -27,11 +16,21 @@ export function FormsList() {
     getForms();
   }, [getForms]);
 
+  const copyFormLink = (formId: string) => {
+    const url = `${window.location.origin}/forms/${formId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success('Form link copied to clipboard');
+    });
+  };
+
   if (isLoading) {
     return (
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
         {[...Array(3)].map((_, i) => (
-          <Card key={i} className='animate-pulse'>
+          <Card
+            key={i}
+            className='animate-pulse'
+          >
             <CardHeader className='space-y-2'>
               <div className='h-4 bg-gray-200 rounded w-3/4'></div>
               <div className='h-3 bg-gray-200 rounded w-1/2'></div>
@@ -47,11 +46,7 @@ export function FormsList() {
   }
 
   if (error) {
-    return (
-      <div className='rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600'>
-        Error: {error.message}
-      </div>
-    );
+    return <div className='rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600'>Error: {error.message}</div>;
   }
 
   if (!forms?.length) {
@@ -59,9 +54,7 @@ export function FormsList() {
       <Card className='text-center p-6'>
         <CardHeader>
           <CardTitle>No Forms Yet</CardTitle>
-          <CardDescription>
-            Create your first form to get started
-          </CardDescription>
+          <CardDescription>Create your first form to get started</CardDescription>
         </CardHeader>
         <CardFooter className='justify-center'>
           <Link href='/forms/new'>
@@ -80,66 +73,92 @@ export function FormsList() {
             <div className='flex items-start justify-between'>
               <div>
                 <CardTitle className='line-clamp-1'>{form.title}</CardTitle>
-                <CardDescription className='line-clamp-1'>
-                  {form.description || 'No description'}
-                </CardDescription>
+                <CardDescription className='line-clamp-1'>{form.description || 'No description'}</CardDescription>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant='ghost' size='icon'>
-                    <MoreVertical className='h-4 w-4' />
-                    <span className='sr-only'>Open menu</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align='end'>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href={`/forms/${form.id}/edit`}
-                      className='flex items-center'
+              <div className='flex items-center gap-1'>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  onClick={() => copyFormLink(form.id)}
+                  title='Copy form link'
+                >
+                  <Copy className='h-4 w-4' />
+                  <span className='sr-only'>Copy form link</span>
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant='ghost'
+                      size='icon'
                     >
-                      <FileEdit className='mr-2 h-4 w-4' />
-                      Edit
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href={`/forms/${form.id}/responses`}
-                      className='flex items-center'
-                    >
-                      <BarChart className='mr-2 h-4 w-4' />
-                      View Responses
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className='text-red-600 focus:text-red-600'
-                    onClick={() => deleteForm(form.id)}
+                      <MoreVertical className='h-4 w-4' />
+                      <span className='sr-only'>Open menu</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align='end'
+                    className='bg-white'
                   >
-                    <Trash2 className='mr-2 h-4 w-4' />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href={`/forms/${form.id}/edit`}
+                        className='flex items-center'
+                      >
+                        <FileEdit className='mr-2 h-4 w-4' />
+                        Edit
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href={`/forms/${form.id}/responses`}
+                        className='flex items-center'
+                      >
+                        <BarChart className='mr-2 h-4 w-4' />
+                        View Responses
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className='text-red-600 focus:text-red-600'
+                      onClick={() => deleteForm(form.id)}
+                    >
+                      <Trash2 className='mr-2 h-4 w-4' />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className='text-sm text-muted-foreground'>
-              Created {new Date(form.created_at).toLocaleDateString()}
-            </div>
+            <div className='text-sm text-muted-foreground'>Created {new Date(form.created_at).toLocaleDateString()}</div>
             <div className='mt-2 flex items-center gap-2'>
-              <span
-                className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                  form.is_published
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-yellow-100 text-yellow-700'
-                }`}
-              >
+              <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${form.is_published ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                 {form.is_published ? 'Published' : 'Draft'}
               </span>
             </div>
           </CardContent>
-          <CardFooter>
-            <Button asChild className='w-full'>
-              <Link href={`/forms/${form.id}/edit`}>Edit Form</Link>
+          <CardFooter className='flex gap-2'>
+            <Button
+              asChild
+              variant='outline'
+              className='flex-1'
+            >
+              <Link href={`/forms/${form.id}/edit`}>
+                <FileEdit className='mr-2 h-4 w-4' />
+                Edit
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant='secondary'
+              className='flex-1'
+            >
+              <Link
+                href={`/forms/${form.id}`}
+                target='_blank'
+              >
+                Open Form
+              </Link>
             </Button>
           </CardFooter>
         </Card>
