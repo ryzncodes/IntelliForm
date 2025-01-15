@@ -5,34 +5,20 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {Question} from './question';
-import {useForm} from '@/lib/hooks/use-form';
-import type {
-  Section,
-  Question as QuestionType,
-  Form,
-} from '@/lib/types/database';
-import {Dispatch, SetStateAction} from 'react';
+import type {Section, Question as QuestionType} from '@/lib/types/database';
 
-type FormWithSections = Form & {
-  sections: (Section & {questions: QuestionType[]})[];
-};
+type SectionWithQuestions = Section & {questions: QuestionType[]};
 
 interface SectionProps {
-  section: Section & {questions?: QuestionType[]};
-  onUpdate: (updates: Partial<Section>) => void;
+  section: SectionWithQuestions;
+  onUpdate: (updates: Partial<SectionWithQuestions>) => void;
   onDelete: () => void;
-  setLocalForm: Dispatch<SetStateAction<FormWithSections | null>>;
+  onDeleteQuestion: (questionId: string) => void;
 }
 
-export function Section({
-  section,
-  onUpdate,
-  onDelete,
-  setLocalForm,
-}: SectionProps) {
+export function Section({section, onUpdate, onDelete, onDeleteQuestion}: SectionProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
-  const {createQuestion} = useForm();
 
   const handleAddQuestion = async () => {
     try {
@@ -44,7 +30,7 @@ export function Section({
         description: '',
         type: 'short_text',
         required: false,
-        order: section.questions?.length || 0,
+        order: section.questions.length,
         options: {},
         validation: null,
         logic: null,
@@ -52,69 +38,26 @@ export function Section({
         updated_at: new Date().toISOString(),
       };
 
-      // Update local state immediately
-      setLocalForm((prev) => ({
-        ...prev!,
-        sections: prev!.sections.map((s) => {
-          if (s.id === section.id) {
-            return {
-              ...s,
-              questions: [...(s.questions || []), newQuestion],
-            };
-          }
-          return s;
-        }),
-      }));
-
-      // Only create in database if the section is not temporary
-      if (!section.id.startsWith('temp_')) {
-        await createQuestion({
-          section_id: section.id,
-          title: newQuestion.title,
-          description: newQuestion.description,
-          type: newQuestion.type,
-          required: newQuestion.required,
-          order: newQuestion.order,
-          options: newQuestion.options,
-          validation: newQuestion.validation,
-          logic: newQuestion.logic,
-        });
-      }
+      // Update through parent's onUpdate to track history
+      onUpdate({
+        ...section,
+        questions: [...section.questions, newQuestion],
+      });
     } finally {
       setIsAddingQuestion(false);
     }
   };
 
   const handleUpdateQuestion = (id: string, updates: Partial<QuestionType>) => {
-    setLocalForm((prev) => ({
-      ...prev!,
-      sections: prev!.sections.map((s) => {
-        if (s.id === section.id) {
-          return {
-            ...s,
-            questions: s.questions.map((q) =>
-              q.id === id ? {...q, ...updates} : q
-            ),
-          };
-        }
-        return s;
-      }),
-    }));
+    // Update through parent's onUpdate to track history
+    onUpdate({
+      ...section,
+      questions: section.questions.map((q) => (q.id === id ? {...q, ...updates} : q)),
+    });
   };
 
   const handleDeleteQuestion = (id: string) => {
-    setLocalForm((prev) => ({
-      ...prev!,
-      sections: prev!.sections.map((s) => {
-        if (s.id === section.id) {
-          return {
-            ...s,
-            questions: s.questions.filter((q) => q.id !== id),
-          };
-        }
-        return s;
-      }),
-    }));
+    onDeleteQuestion(id);
   };
 
   return (
@@ -126,14 +69,27 @@ export function Section({
               value={section.title}
               onChange={(e) => onUpdate({title: e.target.value})}
               placeholder='Section Title'
+              autoFocus
+              onFocus={(e) => e.target.select()}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
             />
             <Textarea
               value={section.description || ''}
               onChange={(e) => onUpdate({description: e.target.value})}
               placeholder='Section Description'
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
             />
             <div className='flex justify-end gap-2'>
-              <Button variant='outline' onClick={() => setIsEditing(false)}>
+              <Button
+                variant='outline'
+                onClick={() => setIsEditing(false)}
+              >
                 Cancel
               </Button>
               <Button onClick={() => setIsEditing(false)}>Save</Button>
@@ -142,11 +98,7 @@ export function Section({
         ) : (
           <div className='flex-1'>
             <h3 className='text-lg font-semibold'>{section.title}</h3>
-            {section.description && (
-              <p className='text-sm text-gray-500 mt-1'>
-                {section.description}
-              </p>
-            )}
+            {section.description && <p className='text-sm text-gray-500 mt-1'>{section.description}</p>}
           </div>
         )}
         <div className='flex items-center gap-2'>
@@ -157,7 +109,11 @@ export function Section({
           >
             {isEditing ? 'Cancel' : 'Edit'}
           </Button>
-          <Button variant='destructive' size='sm' onClick={onDelete}>
+          <Button
+            variant='destructive'
+            size='sm'
+            onClick={onDelete}
+          >
             Delete
           </Button>
         </div>
