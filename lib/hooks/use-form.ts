@@ -3,15 +3,7 @@
 import {useRouter} from 'next/navigation';
 import {useState, useCallback, useEffect} from 'react';
 import {createClient} from '@/lib/supabase/client';
-import {
-  Form,
-  NewForm,
-  UpdateForm,
-  Section,
-  Question,
-  NewSection,
-  NewQuestion,
-} from '@/lib/types/database';
+import {Form, NewForm, UpdateForm, Section, Question, NewSection, NewQuestion} from '@/lib/types/database';
 
 type FormWithSections = Form & {
   sections: (Section & {questions: Question[]})[];
@@ -30,10 +22,7 @@ export function useForm(id?: string) {
       setIsLoading(true);
       setError(null);
 
-      const {data, error: fetchError} = await supabase
-        .from('forms')
-        .select('*')
-        .order('created_at', {ascending: false});
+      const {data, error: fetchError} = await supabase.from('forms').select('*').order('created_at', {ascending: false});
 
       if (fetchError) throw fetchError;
       setForms(data);
@@ -52,31 +41,19 @@ export function useForm(id?: string) {
         setError(null);
 
         // First get the form
-        const {data: formData, error: formError} = await supabase
-          .from('forms')
-          .select('*')
-          .eq('id', id)
-          .single();
+        const {data: formData, error: formError} = await supabase.from('forms').select('*').eq('id', id).single();
 
         if (formError) throw formError;
 
         // Then get the sections with proper ordering
-        const {data: sections, error: sectionsError} = await supabase
-          .from('sections')
-          .select('*')
-          .eq('form_id', id)
-          .order('order', {ascending: true});
+        const {data: sections, error: sectionsError} = await supabase.from('sections').select('*').eq('form_id', id).order('order', {ascending: true});
 
         if (sectionsError) throw sectionsError;
 
         // Then get the questions for each section
         const sectionsWithQuestions = await Promise.all(
           (sections || []).map(async (section: Section) => {
-            const {data: questions, error: questionsError} = await supabase
-              .from('questions')
-              .select('*')
-              .eq('section_id', section.id)
-              .order('order', {ascending: true});
+            const {data: questions, error: questionsError} = await supabase.from('questions').select('*').eq('section_id', section.id).order('order', {ascending: true});
 
             if (questionsError) throw questionsError;
 
@@ -117,11 +94,7 @@ export function useForm(id?: string) {
         setIsLoading(true);
         setError(null);
 
-        const {data, error: createError} = await supabase
-          .from('forms')
-          .insert(form)
-          .select()
-          .single();
+        const {data, error: createError} = await supabase.from('forms').insert(form).select().single();
 
         if (createError) throw createError;
 
@@ -143,10 +116,7 @@ export function useForm(id?: string) {
         setIsLoading(true);
         setError(null);
 
-        const {error: updateError} = await supabase
-          .from('forms')
-          .update(updates)
-          .eq('id', id);
+        const {error: updateError} = await supabase.from('forms').update(updates).eq('id', id);
 
         if (updateError) throw updateError;
 
@@ -168,18 +138,14 @@ export function useForm(id?: string) {
         setIsLoading(true);
         setError(null);
 
-        const {error: createError} = await supabase
-          .from('sections')
-          .insert(section);
+        const {error: createError} = await supabase.from('sections').insert(section);
 
         if (createError) throw createError;
 
         await getForm(section.form_id);
       } catch (e) {
         console.error('Error creating section:', e);
-        setError(
-          e instanceof Error ? e : new Error('Failed to create section')
-        );
+        setError(e instanceof Error ? e : new Error('Failed to create section'));
       } finally {
         setIsLoading(false);
       }
@@ -193,10 +159,7 @@ export function useForm(id?: string) {
         setIsLoading(true);
         setError(null);
 
-        const {error: updateError} = await supabase
-          .from('sections')
-          .update(updates)
-          .eq('id', id);
+        const {error: updateError} = await supabase.from('sections').update(updates).eq('id', id);
 
         if (updateError) throw updateError;
 
@@ -205,9 +168,7 @@ export function useForm(id?: string) {
         }
       } catch (e) {
         console.error('Error updating section:', e);
-        setError(
-          e instanceof Error ? e : new Error('Failed to update section')
-        );
+        setError(e instanceof Error ? e : new Error('Failed to update section'));
       } finally {
         setIsLoading(false);
       }
@@ -221,10 +182,7 @@ export function useForm(id?: string) {
         setIsLoading(true);
         setError(null);
 
-        const {error: deleteError} = await supabase
-          .from('sections')
-          .delete()
-          .eq('id', id);
+        const {error: deleteError} = await supabase.from('sections').delete().eq('id', id);
 
         if (deleteError) throw deleteError;
 
@@ -233,9 +191,7 @@ export function useForm(id?: string) {
         }
       } catch (e) {
         console.error('Error deleting section:', e);
-        setError(
-          e instanceof Error ? e : new Error('Failed to delete section')
-        );
+        setError(e instanceof Error ? e : new Error('Failed to delete section'));
       } finally {
         setIsLoading(false);
       }
@@ -249,10 +205,7 @@ export function useForm(id?: string) {
         setIsLoading(true);
         setError(null);
 
-        const {error: deleteError} = await supabase
-          .from('forms')
-          .delete()
-          .eq('id', id);
+        const {error: deleteError} = await supabase.from('forms').delete().eq('id', id);
 
         if (deleteError) throw deleteError;
 
@@ -287,9 +240,7 @@ export function useForm(id?: string) {
         setIsLoading(true);
         setError(null);
 
-        const {error: createError} = await supabase
-          .from('questions')
-          .insert(question);
+        const {error: createError} = await supabase.from('questions').insert(question);
 
         if (createError) throw createError;
 
@@ -298,9 +249,7 @@ export function useForm(id?: string) {
         }
       } catch (e) {
         console.error('Error creating question:', e);
-        setError(
-          e instanceof Error ? e : new Error('Failed to create question')
-        );
+        setError(e instanceof Error ? e : new Error('Failed to create question'));
       } finally {
         setIsLoading(false);
       }
@@ -314,10 +263,7 @@ export function useForm(id?: string) {
         setIsLoading(true);
         setError(null);
 
-        const {error: updateError} = await supabase
-          .from('questions')
-          .update(updates)
-          .eq('id', id);
+        const {error: updateError} = await supabase.from('questions').update(updates).eq('id', id);
 
         if (updateError) throw updateError;
 
@@ -326,9 +272,7 @@ export function useForm(id?: string) {
         }
       } catch (e) {
         console.error('Error updating question:', e);
-        setError(
-          e instanceof Error ? e : new Error('Failed to update question')
-        );
+        setError(e instanceof Error ? e : new Error('Failed to update question'));
       } finally {
         setIsLoading(false);
       }
@@ -342,10 +286,7 @@ export function useForm(id?: string) {
         setIsLoading(true);
         setError(null);
 
-        const {error: deleteError} = await supabase
-          .from('questions')
-          .delete()
-          .eq('id', id);
+        const {error: deleteError} = await supabase.from('questions').delete().eq('id', id);
 
         if (deleteError) throw deleteError;
 
@@ -354,9 +295,7 @@ export function useForm(id?: string) {
         }
       } catch (e) {
         console.error('Error deleting question:', e);
-        setError(
-          e instanceof Error ? e : new Error('Failed to delete question')
-        );
+        setError(e instanceof Error ? e : new Error('Failed to delete question'));
       } finally {
         setIsLoading(false);
       }

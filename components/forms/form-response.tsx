@@ -9,10 +9,19 @@ import {Textarea} from '@/components/ui/textarea';
 import {Checkbox} from '@/components/ui/checkbox';
 import {RadioGroup, RadioGroupItem} from '@/components/ui/radio-group';
 import {Label} from '@/components/ui/label';
+import {Slider} from '@/components/ui/slider';
 import type {FormWithSections, Question, QuestionValue} from '@/lib/types/database';
 
 interface QuestionOptions {
   choices?: string[];
+  maxRating?: number;
+  scaleMin?: number;
+  scaleMax?: number;
+  scaleStep?: number;
+  scaleLabels?: {
+    start?: string;
+    end?: string;
+  };
 }
 
 interface FormResponseProps {
@@ -74,7 +83,7 @@ export function FormResponse({form}: FormResponseProps) {
   const renderQuestionInput = (question: Question) => {
     const value = responses[question.id] || '';
     const error = validationErrors[question.id];
-    const options = (question.options as QuestionOptions)?.choices || [];
+    const options = question.options as QuestionOptions;
 
     switch (question.type) {
       case 'short_text':
@@ -102,8 +111,9 @@ export function FormResponse({form}: FormResponseProps) {
           <RadioGroup
             value={value as string}
             onValueChange={(value) => handleInputChange(question, value)}
+            className='space-y-2'
           >
-            {options.map((option: string) => (
+            {options.choices?.map((option: string) => (
               <div
                 key={option}
                 className='flex items-center space-x-2'
@@ -119,10 +129,10 @@ export function FormResponse({form}: FormResponseProps) {
         );
 
       case 'multiple_choice':
-        const selectedOptions = (value as string[]) || [];
+        const selectedOptions = Array.isArray(value) ? value : [];
         return (
           <div className='space-y-2'>
-            {options.map((option: string) => (
+            {options.choices?.map((option: string) => (
               <div
                 key={option}
                 className='flex items-center space-x-2'
@@ -157,7 +167,7 @@ export function FormResponse({form}: FormResponseProps) {
           <Input
             type='number'
             value={value as number}
-            onChange={(e) => handleInputChange(question, parseFloat(e.target.value))}
+            onChange={(e) => handleInputChange(question, e.target.value ? parseFloat(e.target.value) : '')}
             placeholder='0'
             className={error ? 'border-red-500' : ''}
           />
@@ -183,8 +193,69 @@ export function FormResponse({form}: FormResponseProps) {
           />
         );
 
+      case 'phone':
+        return (
+          <Input
+            type='tel'
+            value={value as string}
+            onChange={(e) => handleInputChange(question, e.target.value)}
+            placeholder='Phone number'
+            className={error ? 'border-red-500' : ''}
+          />
+        );
+
+      case 'rating':
+        const maxRating = options.maxRating || 5;
+        const ratingValue = typeof value === 'number' ? value : 0;
+        return (
+          <div className='space-y-2'>
+            <div className='flex items-center gap-1'>
+              {[...Array(maxRating)].map((_, index) => (
+                <button
+                  key={index}
+                  type='button'
+                  onClick={() => handleInputChange(question, index + 1)}
+                  className={`text-2xl transition-colors ${ratingValue >= index + 1 ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-400`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+            <p className='text-sm text-muted-foreground'>{ratingValue ? `${ratingValue} out of ${maxRating}` : 'Click to rate'}</p>
+          </div>
+        );
+
+      case 'scale':
+        const min = options.scaleMin || 1;
+        const max = options.scaleMax || 10;
+        const step = options.scaleStep || 1;
+        const labels = options.scaleLabels || {};
+        const scaleValue = typeof value === 'number' ? value : min;
+
+        return (
+          <div className='space-y-4'>
+            {(labels.start || labels.end) && (
+              <div className='flex justify-between text-sm text-muted-foreground'>
+                {labels.start && <span>{labels.start}</span>}
+                {labels.end && <span>{labels.end}</span>}
+              </div>
+            )}
+            <div className='flex items-center gap-4'>
+              <Slider
+                min={min}
+                max={max}
+                step={step}
+                value={[scaleValue]}
+                onValueChange={(values: number[]) => handleInputChange(question, values[0])}
+                className='flex-1'
+              />
+              <span className='w-12 text-center'>{scaleValue}</span>
+            </div>
+          </div>
+        );
+
       default:
-        return null;
+        return <div className='text-sm text-red-500'>Unsupported question type: {question.type}</div>;
     }
   };
 
