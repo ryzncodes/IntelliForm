@@ -1,6 +1,7 @@
 'use client';
 
 import {useState, useCallback} from 'react';
+import {useRouter} from 'next/navigation';
 import {useFormResponse} from '@/lib/hooks/use-form-response';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
@@ -16,10 +17,10 @@ interface QuestionOptions {
 
 interface FormResponseProps {
   form: FormWithSections;
-  onSubmitSuccess?: () => void;
 }
 
-export function FormResponse({form, onSubmitSuccess}: FormResponseProps) {
+export function FormResponse({form}: FormResponseProps) {
+  const router = useRouter();
   const {submitResponse, validateResponse, isSubmitting, error} = useFormResponse(form.id);
   const [responses, setResponses] = useState<{[key: string]: QuestionValue}>({});
   const [validationErrors, setValidationErrors] = useState<{
@@ -63,7 +64,7 @@ export function FormResponse({form, onSubmitSuccess}: FormResponseProps) {
 
     try {
       await submitResponse(responses);
-      onSubmitSuccess?.();
+      router.push(`/forms/${form.id}/success`);
     } catch (error) {
       // Error is handled by the hook and available in the error state
       console.error('Failed to submit form:', error);
