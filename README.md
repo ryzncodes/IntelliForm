@@ -10,9 +10,26 @@ A dynamic form builder and survey platform built with Next.js 14, Supabase, and 
 - 📱 Responsive design that works on all devices
 - 🔒 Secure authentication and data storage with Supabase
 - 📊 Real-time analytics and response tracking
-- 🤖 AI-powered form suggestions and optimization
+- 🔙 Undo/Redo support with keyboard shortcuts
+- ⭐ Advanced question types (Rating, Scale, etc.)
 - 📋 Multiple form templates and customization options
 - 📈 Export responses in various formats
+
+## Form Builder Features
+
+- ✨ Rich text editing with keyboard shortcuts
+- 🔄 Undo/Redo functionality (Cmd/Ctrl + Z)
+- 📝 Multiple question types:
+  - Short Text & Long Text
+  - Single & Multiple Choice
+  - Rating (Star rating)
+  - Scale (Numeric with labels)
+  - Date & Time
+  - Email & Phone
+  - Number
+- 🎯 Section-based organization
+- 💾 Auto-save and draft support
+- 👁️ Live preview mode
 
 ## Form Response Features
 
