@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom'
+import '@testing-library/jest-dom';
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
@@ -7,22 +7,21 @@ jest.mock('next/navigation', () => ({
       push: jest.fn(),
       replace: jest.fn(),
       prefetch: jest.fn(),
-    }
+      back: jest.fn(),
+    };
   },
   useSearchParams() {
     return {
       get: jest.fn(),
-    }
+    };
   },
-}))
+  usePathname() {
+    return '';
+  },
+}));
 
-// Mock Supabase client
-jest.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    auth: {
-      signInWithPassword: jest.fn(),
-      signUp: jest.fn(),
-      signOut: jest.fn(),
-    },
-  }),
-})) 
+// Mock window.confirm
+Object.defineProperty(window, 'confirm', {
+  writable: true,
+  value: jest.fn().mockImplementation(() => true),
+});
