@@ -9,7 +9,7 @@ export default function FormsPage() {
       <div className='flex items-center justify-between mb-8'>
         <h1 className='text-3xl font-bold'>My Forms</h1>
         <Button asChild>
-          <Link href='/forms/new' className='flex items-center gap-2'>
+          <Link href='/dashboard/forms/new' className='flex items-center gap-2'>
             <PlusCircle className='h-5 w-5' />
             Create New Form
           </Link>

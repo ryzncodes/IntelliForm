@@ -27,10 +27,7 @@ export function FormsList() {
     return (
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
         {[...Array(3)].map((_, i) => (
-          <Card
-            key={i}
-            className='animate-pulse'
-          >
+          <Card key={i} className='animate-pulse'>
             <CardHeader className='space-y-2'>
               <div className='h-4 bg-gray-200 rounded w-3/4'></div>
               <div className='h-3 bg-gray-200 rounded w-1/2'></div>
@@ -57,7 +54,7 @@ export function FormsList() {
           <CardDescription>Create your first form to get started</CardDescription>
         </CardHeader>
         <CardFooter className='justify-center'>
-          <Link href='/forms/new'>
+          <Link href='/dashboard/forms/new'>
             <Button>Create New Form</Button>
           </Link>
         </CardFooter>
@@ -76,51 +73,31 @@ export function FormsList() {
                 <CardDescription className='line-clamp-1'>{form.description || 'No description'}</CardDescription>
               </div>
               <div className='flex items-center gap-1'>
-                <Button
-                  variant='ghost'
-                  size='icon'
-                  onClick={() => copyFormLink(form.id)}
-                  title='Copy form link'
-                >
+                <Button variant='ghost' size='icon' onClick={() => copyFormLink(form.id)} title='Copy form link'>
                   <Copy className='h-4 w-4' />
                   <span className='sr-only'>Copy form link</span>
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      variant='ghost'
-                      size='icon'
-                    >
+                    <Button variant='ghost' size='icon'>
                       <MoreVertical className='h-4 w-4' />
                       <span className='sr-only'>Open menu</span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align='end'
-                    className='bg-white'
-                  >
+                  <DropdownMenuContent align='end' className='bg-white'>
                     <DropdownMenuItem asChild>
-                      <Link
-                        href={`/forms/${form.id}/edit`}
-                        className='flex items-center'
-                      >
+                      <Link href={`/forms/${form.id}/edit`} className='flex items-center'>
                         <FileEdit className='mr-2 h-4 w-4' />
                         Edit
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link
-                        href={`/forms/${form.id}/responses`}
-                        className='flex items-center'
-                      >
+                      <Link href={`/forms/${form.id}/responses`} className='flex items-center'>
                         <BarChart className='mr-2 h-4 w-4' />
                         View Responses
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className='text-red-600 focus:text-red-600'
-                      onClick={() => deleteForm(form.id)}
-                    >
+                    <DropdownMenuItem className='text-red-600 focus:text-red-600' onClick={() => deleteForm(form.id)}>
                       <Trash2 className='mr-2 h-4 w-4' />
                       Delete
                     </DropdownMenuItem>
@@ -138,25 +115,14 @@ export function FormsList() {
             </div>
           </CardContent>
           <CardFooter className='flex gap-2'>
-            <Button
-              asChild
-              variant='outline'
-              className='flex-1'
-            >
+            <Button asChild variant='outline' className='flex-1'>
               <Link href={`/forms/${form.id}/edit`}>
                 <FileEdit className='mr-2 h-4 w-4' />
                 Edit
               </Link>
             </Button>
-            <Button
-              asChild
-              variant='secondary'
-              className='flex-1'
-            >
-              <Link
-                href={`/forms/${form.id}`}
-                target='_blank'
-              >
+            <Button asChild variant='secondary' className='flex-1'>
+              <Link href={`/forms/${form.id}`} target='_blank'>
                 Open Form
               </Link>
             </Button>

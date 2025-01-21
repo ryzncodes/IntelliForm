@@ -28,7 +28,7 @@ async function makeRequestWithRetry(prompt: FormGenerationPrompt, retries = 3, i
   for (let i = 0; i < retries; i++) {
     try {
       const response = await openai.chat.completions.create({
-        model: 'gpt-3.5-turbo-1106',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -36,11 +36,62 @@ async function makeRequestWithRetry(prompt: FormGenerationPrompt, retries = 3, i
             You must respond with a valid JSON object containing an array of questions under the "questions" key.
             Each question object must have these exact properties:
             {
-              "type": string (one of: "text", "multipleChoice", "checkbox", "rating"),
+              "type": string (must be one of the following exact values):
+                - "short_text": for single-line text input (names, titles, brief answers)
+                - "long_text": for multi-line text input (detailed responses, feedback)
+                - "single_choice": for selecting ONE option from a list (radio buttons)
+                - "multiple_choice": for selecting MULTIPLE options (checkboxes)
+                - "rating": for 5-star rating questions
+                - "scale": for numeric scale questions (with min/max values)
               "text": string (the question text),
-              "options": string[] (required for multipleChoice and checkbox types),
+              "options": string[] (REQUIRED for single_choice and multiple_choice types only),
               "required": boolean,
-              "validation": object (optional validation rules)
+              "validation": object (format: { min?: number, max?: number })
+            }
+            
+            Strict rules for question types:
+            1. "short_text": Use for brief answers that fit on one line
+               Example: "What is your name?"
+               
+            2. "long_text": Use for detailed responses needing multiple lines
+               Example: "Please describe your experience in detail."
+               
+            3. "single_choice": MUST include "options" array, user can select ONE
+               Example: "How often do you exercise?"
+               options: ["Daily", "Weekly", "Monthly", "Never"]
+               
+            4. "multiple_choice": MUST include "options" array, user can select MANY
+               Example: "Which features do you use? (Select all that apply)"
+               options: ["Feature A", "Feature B", "Feature C"]
+               
+            5. "rating": Always uses 5-star scale, no validation needed
+               Example: "How would you rate our service?"
+               
+            6. "scale": MUST include validation with min and max values
+               Example: "On a scale of 1-10, how likely are you to recommend us?"
+               validation: { "min": 1, "max": 10 }
+
+            Response Format Example:
+            {
+              "questions": [
+                {
+                  "type": "short_text",
+                  "text": "What is your name?",
+                  "required": true
+                },
+                {
+                  "type": "multiple_choice",
+                  "text": "Which products do you use? (Select all that apply)",
+                  "options": ["Product A", "Product B", "Product C"],
+                  "required": true
+                },
+                {
+                  "type": "scale",
+                  "text": "How likely are you to recommend us?",
+                  "required": true,
+                  "validation": { "min": 1, "max": 10 }
+                }
+              ]
             }`,
           },
           {
